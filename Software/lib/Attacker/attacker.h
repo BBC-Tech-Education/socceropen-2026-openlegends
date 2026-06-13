@@ -1,0 +1,18 @@
+#ifndef ATTACKER_H
+#define ATTACKER_H
+
+#include "definitions.h"
+#include "PID.h"
+
+class Attacker {
+    public:
+        Attacker() {}
+        void init();
+        void update(const LSData& lsData, const CameraData& cameraData, const OrbitData& orbitData, float heading, float compassRot);
+        float movementValues[3] = {0.0f};
+
+    private:
+        unsigned long timer;
+};
+
+#endif
