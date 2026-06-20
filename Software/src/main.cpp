@@ -3,38 +3,41 @@
 #include <camera.h>
 #include <config.h>
 #include <definitions.h>
-#include <lightSensors.h>
+// #include <lightSensors.h>
 #include <motors.h>
 #include <orbit.h>
 #include <PID.h>
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55, BNO055_ADDRESS_B, &Wire2);
-Bluetooth bluetooth;
-Camera camera;
-LightSensors lightSensors;
-LSData lsdata;
+// Bluetooth bluetooth; 
+// Camera camera;
+// LightSensors lightSensors;
+// LSData lsdata;
 Motors motors;
-Orbit orbit;
-OrbitData orbitdata;
+// Orbit orbit;
+// OrbitData orbitdata;
 // IntervalTimer motorsOnTimer;
-IntervalTimer ledTimer;
+// IntervalTimer ledTimer;
+
+// float rot = 0;
+// unsigned long lastTime = 0;
 
 PID imuPID(IMU_KP, IMU_KI, IMU_KD, IMU_MAX);
-PID attackGoalTrackPID(ATTACK_GOAL_TRACK_KP, ATTACK_GOAL_TRACK_KI, ATTACK_GOAL_TRACK_KD, ATTACK_GOAL_TRACK_MAX);
+// PID attackGoalTrackPID(ATTACK_GOAL_TRACK_KP, ATTACK_GOAL_TRACK_KI, ATTACK_GOAL_TRACK_KD, ATTACK_GOAL_TRACK_MAX);
 
 // static volatile uint8_t motorsOn = 0;
-static volatile uint8_t ledOn = 0;
-static float attackGoalAngle = 0.0f; // If first loop doesn't have camera values
-static float attackGoalRot = 0.0f;
+// static volatile uint8_t ledOn = 0;
+// static float attackGoalAngle = 0.0f; // If first loop doesn't have camera values
+// static float attackGoalRot = 0.0f;
 
 // void motorsOnUpdate() {
 //     motorsOn = (motorsOn + 1) % 100;
 // }
 
-void toggleLED() {
-    ledOn = 1 - ledOn;
-    digitalWrite(LED_BUILTIN, ledOn);
-}
+// void toggleLED() {
+//     ledOn = 1 - ledOn;
+//     digitalWrite(LED_BUILTIN, ledOn);
+// }
 
 void setup() {
     delay(100);
@@ -45,46 +48,64 @@ void setup() {
     digitalWrite(LED_BUILTIN, HIGH);
 
     motors.init();
-    camera.init();
+    // camera.init();
     // lightSensors.init();
     // attacker.init();
     // defender.init();
     // bluetooth.init();
-    // while (!bno.begin(OPERATION_MODE_IMUPLUS)) { 
-    //     Serial.println("BNO not working");
-    //     delay(1000);
-    // }
-    // delay(500);
-    // bno.setExtCrystalUse(true);
-    // delay(500);
+    while (!bno.begin(OPERATION_MODE_IMUPLUS)) { 
+        Serial.println("BNO not working");
+        delay(1000);
+    }
+    delay(500);
+    bno.setExtCrystalUse(true);
+    delay(500);
 
     digitalWrite(LED_BUILTIN, LOW);
 
     // motorsOnTimer.begin(motorsOnUpdate, 1000);
-    ledTimer.begin(toggleLED, 500000);
+    // ledTimer.begin(toggleLED, 500000);
+    // pinMode(LS_PWM, OUTPUT);
+    // lastTime = millis();
 }
 
 void loop() {
-    // sensors_event_t imu;
-    // bno.getEvent(&imu);
-    // float heading = imu.orientation.x;
+    // analogWrite(LS_PWM, 40);
+    sensors_event_t imu;
+    bno.getEvent(&imu);
+    float heading = imu.orientation.x;
+    // Serial.println(heading);
 
-    // if (heading > 180.0f) {
-    //     heading -= 360.0f;
+    // if ((millis() - lastTime) > 1000) {
+    //     if (rot == 100.0f) {
+    //         rot = -100.0f;
+    //     } else {
+    //         rot += 10.0f;
+    //     }
+    //     Serial.println(rot);
+    //     lastTime = millis();
     // }
 
-    // float compassRot = imuPID.update(heading, 0.0f);
-
-    camera.update();
-    if (camera.cameraData.newData) {
-        attackGoalAngle = camera.cameraData.attackGoalAngle;
-        if (attackGoalAngle > 180.0f) {
-            attackGoalAngle -= 360.0f;
-        }
-        attackGoalRot = -attackGoalTrackPID.update(attackGoalAngle, 0.0f);
+    if (heading > 180.0f) {
+        heading -= 360.0f;
     }
-    orbit.update(camera.cameraData);
-    motors.move(orbit.orbitData.orbitSpeed, orbit.orbitData.orbitAngle, attackGoalRot);
+
+    float compassRot = imuPID.update(heading, 0.0f);
+
+    motors.move(0.0f, 0.0f, compassRot);
+
+    // camera.update();
+    // if (camera.cameraData.newData) {
+    //     attackGoalAngle = camera.cameraData.attackGoalAngle;
+    //     if (attackGoalAngle > 180.0f) {
+    //         attackGoalAngle -= 360.0f;
+    //     }
+    //     attackGoalRot = -attackGoalTrackPID.update(attackGoalAngle, 0.0f);
+    // }
+    // orbit.update(camera.cameraData);
+    // motors.move(0.0f, 0.0f, attackGoalRot);
+    // Serial.println(attackGoalRot);
+    // motors.move(orbit.orbitData.orbitSpeed, orbit.orbitData.orbitAngle, attackGoalRot);
     // motors.move(25.0f, 90.0f, 0.0f);
     
     // lightSensors.update(camera.cameraData, heading); // stopOnLine account for heading?

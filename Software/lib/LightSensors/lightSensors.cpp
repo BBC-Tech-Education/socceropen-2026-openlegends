@@ -1,26 +1,33 @@
 #include "lightSensors.h"
 
 void LightSensors::init() {
-    for (uint8_t i = 0; i < 2; i++) {
+    for (uint8_t i = 0; i < 3; i++) {
         pinMode(lightOutPins[i], INPUT);
-    } 
+    }
+
     for (uint8_t i = 0; i < 4; i++) {
         pinMode(lightPins[i], OUTPUT);
-    }    
+    }
+
     read();
+
     for (uint8_t i = 0; i < LS_NUMBER; i++) {
-        whiteValues[i] = ROBOT_1 ? 900 : 900;
+        whiteValues[i] = ROBOT_1 ? 900 : 900; // tune thresholds
     }
 }
 
 void LightSensors::read() {
-    for (uint8_t channel = 0; channel < 32; channel++) {
+    for (uint8_t channel = 0; channel < LS_NUMBER; channel++) { // Inner ring
         uint8_t muxInput = lightPinsIndex[channel];
+
         for (uint8_t j = 0; j < 4; j++) {
             digitalWrite(lightPins[j], (muxInput >> j) & 0x01);
         }
+
         delayMicroseconds(10);
-        lightValues[channel] = analogRead((muxInput >= 16) ? LS_OUT_2 : LS_OUT);
+
+        lightValues[channel] = analogRead((muxInput >= 32) ? LS_OUT_3 : (muxInput >= 16) ? LS_OUT_2 : LS_OUT);
+
         // Serial.print(lightValues[channel]);
         // Serial.print(" ");
     }
@@ -29,19 +36,30 @@ void LightSensors::read() {
 
 float LightSensors::lineAngle() {
     for (uint8_t i = 0; i < 4; i++) {
-        clusters[i][0] = 0;
-        clusters[i][1] = 0;
-        clusterAngles[i] = 0.0f;
-        angleBetweenClusters[i] = 0;
+        innerClusters[i][0] = 0;
+        innerClusters[i][1] = 0;
+        innerClusterAngles[i] = 0.0f;
+        angleBetweenInnerClusters[i] = 0;
     }
+
+    for (uint8_t i = 0; i < 8; i++) {
+        outerClusters[i][0] = 0;
+        outerClusters[i][1] = 0;
+        outerClusterAngles[i] = 0.0f;
+        angleBetweenOuterClusters[i] = 0;
+    }
+
     line = false;
+
     for (uint8_t i = 0; i < LS_NUMBER; i++) {
         seesLine[i] = lightValues[i] >= whiteValues[i];
         line |= seesLine[i];
+
         // Serial.print(seesLine[i]);
         // Serial.print(" ");        
     }
     // Serial.println();
+
     // for (uint8_t i = 0; i < LS_NUMBER; i++) { // Fills in faulty phototransistors
     //     uint8_t before = (i + (LS_NUMBER - 1)) % LS_NUMBER;
     //     uint8_t after = (i + 1) % LS_NUMBER;
@@ -52,29 +70,113 @@ float LightSensors::lineAngle() {
         //     seesLine[i] = 0;
         // }
     // }
+
+    /* Inner Ring */
+    innerRing = false;
     clusterStart = false;
-    uint8_t cluster = 0;
-    for (uint8_t i = 0; i < LS_NUMBER; i++) {
+    uint8_t innerCluster = 0;
+
+    // Top, going clockwise
+
+    for (uint8_t i = 0; i < LS_NUMBER - 16; i++) {
         if (seesLine[i]) {
+            innerRing = true;
             if (!clusterStart) { // Starts cluster
-                clusters[cluster][0] = i;
+                innerClusters[innerCluster][0] = i;
                 clusterStart = true;
-            } if (i == LS_NUMBER - 1) { // Ends cluster
-                clusters[cluster][1] = i;
-                cluster++;
+            } if (i == LS_NUMBER - 17) { // Ends cluster
+                innerClusters[innerCluster][1] = i;
+                innerCluster++;
                 clusterStart = false;
             }
-        } else if (clusterStart) { // Ends cluster
-            clusters[cluster][1] = i - 1;
-            cluster++;
+        } else if (clusterStart) { // Ends cluster normally
+            innerClusters[innerCluster][1] = i - 1;
+            innerCluster++;
             clusterStart = false;
         }
     }
-    if (seesLine[LS_NUMBER - 1] && seesLine[0]) { // Merge first and last clusters
-        clusters[0][0] = clusters[cluster - 1][0];
-        cluster--;
+
+    if (seesLine[LS_NUMBER - 17] && seesLine[0]) { // Merge first and last clusters
+        innerClusters[0][0] = innerClusters[innerCluster - 1][0];
+        innerCluster--;
     }
-    // Line Angle Calculations
+
+    /* Outer Ring */
+    outerRing = false;
+    clusterStart = false;
+    uint8_t outerCluster = 0;
+
+    // [32-35]=front, [36-39]=right, [40-43]=back, [44-47]=left
+
+    for (uint8_t i = LS_NUMBER - 16; i < LS_NUMBER; i++) {
+        
+        bool endOfGroup = (i == 35) || (i == 39) || (i == 43) || (i == 47);
+
+        if (seesLine[i]) {
+            outerRing = true;
+            if (!clusterStart) { // Starts cluster
+                outerClusters[outerCluster][0] = i;
+                clusterStart = true;
+            } if (endOfGroup) { // Ends cluster
+                outerClusters[outerCluster][1] = i;
+                outerCluster++;
+                clusterStart = false;
+            }
+        } else if (clusterStart) { // Ends cluster normally
+            outerClusters[outerCluster][1] = i - 1;
+            outerCluster++;
+            clusterStart = false;
+        }
+    }
+    
+    /* Line Angle Calculations */
+    if (innerRing) {
+        for (uint8_t i = 0; i < innerCluster; i++) {
+            innerClusterAngles[i] = midAngle(innerClusters[i][0], innerClusters[i][1]); // change midangle
+        }
+        if (innerCluster == 1) { // 1 cluster
+            whiteAngle = innerClusterAngles[0];
+        } else if (innerCluster == 2) { // 2 clusters
+            whiteAngle = smallMidAngle(innerClusterAngles[0], innerClusterAngles[1]); // change small mid angle
+        } else if (innerCluster == 3) { // 3 clusters
+            for (uint8_t i = 0; i < innerCluster; i++) {
+                angleBetweenInnerClusters[i] = angleDiff(innerClusterAngles[i], innerClusterAngles[(i + 1) % innerCluster]); // Smallest angle between clusters
+            }
+            uint8_t largestAngle = fmaxf(fmaxf(angleBetweenInnerClusters[0], angleBetweenInnerClusters[1]), angleBetweenInnerClusters[2]); // Largest angle between clusters
+            for (uint8_t i = 0; i < innerCluster; i++) {
+                if (angleBetweenInnerClusters[i] == largestAngle) { // whiteAngle midpoint of clusters furthest from each other, on the side of the remaining cluster
+                    whiteAngle = smallMidAngle(innerClusterAngles[i], innerClusterAngles[(i + 1) % innerCluster]); // Midpoint of minor arc between clusters
+                    if (angleDiff(whiteAngle, innerClusterAngles[(i + 2) % innerCluster]) > 90.0f) { // Wrong side lol
+                        whiteAngle = normaliseAngle(whiteAngle + 180.0f); // Flips whiteAngle
+                    }
+                    break;
+                }
+            }
+        } else { // More than 3 clusters
+            // two furthest clusters, other two find middle, then same logic as 3 clusters
+            // for (uint8_t i = 0; i < innerCluster; i++) {
+            //     angleBetweenInnerClusters[i] = angleDiff(innerClusterAngles[i], innerClusterAngles[(i + 1) % innerCluster]); // Smallest angle between clusters
+            // }
+            // uint8_t largestAngle = fmaxf(fmaxf(fmaxf(angleBetweenInnerClusters[0], angleBetweenInnerClusters[1]), angleBetweenInnerClusters[2]), angleBetweenInnerClusters[3]); // Largest angle between clusters
+            // for (uint8_t i = 0; i < innerCluster; i++) {
+            //     if (angleBetweenInnerClusters[i] == largestAngle) { // whiteAngle midpoint of clusters furthest from each other, on the side of the remaining cluster
+            //         whiteAngle = smallMidAngle(innerClusterAngles[i], innerClusterAngles[(i + 1) % innerCluster]); // Midpoint of minor arc between clusters
+            //         float midOtherTwo = smallMidAngle(innerClusterAngles[(i + 2) % innerCluster], innerClusterAngles[(i + 3) % innerCluster]);
+            //         if (angleDiff(whiteAngle, midOtherTwo) > 90.0f) { // Wrong side lol
+            //             whiteAngle = normaliseAngle(whiteAngle + 180.0f); // Flips whiteAngle
+            //         }
+            //         break;
+            //     }
+            // }
+        }
+    } else if (outerRing) {
+        hi
+    } else {
+        whiteAngle = -1.0f;
+    }
+
+
+
     if (cluster == 0) { // No line
         whiteAngle = -1.0f;
     } else {
@@ -121,11 +223,13 @@ float LightSensors::direction(float heading) {
             state = 2;
             correctedLineAngle = correctedAngle;
         }
+
     } else if (state == 4) { // State 4
         if (line) {
             state = 3;
             correctedLineAngle = normaliseAngle(correctedAngle + 180.0f);
         }
+
     } else { // On line (State 2 or 3)
         if (line) {
             if (angleDiff(correctedLineAngle, correctedAngle) <= AVOID_ANGLE_FLIP) { // State 2

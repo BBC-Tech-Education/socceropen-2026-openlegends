@@ -13,9 +13,6 @@ public:
 
 private:
     uint8_t INA, INB, PWM;
-
-    float currentSpeed;
-    PID motorPID = PID(MOTOR_KP, MOTOR_KI, MOTOR_KD, MOTOR_ABS_MAX);
 };
 
 #endif

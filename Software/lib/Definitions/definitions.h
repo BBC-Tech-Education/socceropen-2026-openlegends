@@ -10,7 +10,7 @@
 #define ATTACK_FAST_SPEED 0.0f
 #define ATTACK_CLOSE_DISTANCE 0.0f
 #define ATTACK_FAR_DISTANCE 0.0f
-#define ATTACK_SURGE_ANGLE 0.0f
+#define ATTACK_SURGE_ANGLE 5.0f
 #define ATTACK_SURGE_SPEED 0.0f
 #define ORBIT_MAX_OFFSET 90.0f
 #define ORBIT_MIN_MULTIPLIER 0.1f
@@ -31,15 +31,21 @@
 
 /* PIDs */
 // Compass Correct PID
-#define IMU_KP (ROBOT_1 ? -0.5f : 0.0f)
+
+// Increase D, push robot, wait until constant oscillation
+// Halve D
+// Increase P until constant oscillation
+// Halve P
+
+#define IMU_KP (ROBOT_1 ? 0.5f : 0.0f)
 #define IMU_KI (ROBOT_1 ? 0.0f : 0.0f)
-#define IMU_KD (ROBOT_1 ? 0.0f : 0.0f)
+#define IMU_KD (ROBOT_1 ? 0.03f : 0.0f)
 #define IMU_MAX (ROBOT_1 ? 0.0f : 0.0f)
 
 // Attacker Goal Tracking PID
-#define ATTACK_GOAL_TRACK_KP (ROBOT_1 ? 0.5f : 0.0f) // High P
+#define ATTACK_GOAL_TRACK_KP (ROBOT_1 ? 0.125f : 0.0f) // High P
 #define ATTACK_GOAL_TRACK_KI (ROBOT_1 ? 0.0f : 0.0f)
-#define ATTACK_GOAL_TRACK_KD (ROBOT_1 ? 0.025f : 0.0f) // No D?
+#define ATTACK_GOAL_TRACK_KD (ROBOT_1 ? 0.02f : 0.0f) // No D?
 #define ATTACK_GOAL_TRACK_MAX (ROBOT_1 ? 25.0f : 0.0f)
 
 // Defender Goal Tracking PID
@@ -65,29 +71,29 @@
 #define MOTOR_NUM 4
 #define MOTOR_PWM_FREQ 15000.0f
 
-#define MOTOR_KP 0.005f
+#define MOTOR_KP 0.01f
 #define MOTOR_KI 0.0f
 #define MOTOR_KD 0.0f
-#define MOTOR_ABS_MAX 0.25f
+#define MOTOR_ABS_MAX 0.5f
 
-#define FL_PWM 29
-#define FL_INA 32
-#define FL_INB 31
+#define FL_PWM 28 // 29
+#define FL_INA 30 // 32
+#define FL_INB 29 // 31
 
-#define FR_PWM 12
-#define FR_INA 28
-#define FR_INB 27
+#define FR_PWM 11 // 12
+#define FR_INA 27 // 28
+#define FR_INB 12 // 27
 
-#define BR_PWM 6
-#define BR_INA 8
-#define BR_INB 7
+#define BR_PWM 5 // 6
+#define BR_INA 7 // 8
+#define BR_INB 6 // 7
 
-#define BL_PWM 9
-#define BL_INA 11
-#define BL_INB 10
+#define BL_PWM 8 // 9
+#define BL_INA 10 // 11
+#define BL_INB 9 // 10
 
 // Light Sensors
-#define LS_NUMBER 32
+#define LS_NUMBER 48
 #define LS_0 37
 #define LS_1 36
 #define LS_2 35
@@ -95,6 +101,7 @@
 #define LS_OUT 40
 #define LS_OUT_2 39
 #define LS_OUT_3 38
+#define LS_PWM 33
 
 // Camera
 #define CAMERA_SERIAL Serial1
@@ -106,15 +113,9 @@
 // Bluetooth
 #define BLUETOOTH_SERIAL Serial5
 #define BLUETOOTH_PACKET_NUMBER 6
-#define BLUETOOTH_START_BYTE 255
+#define BLUETOOTH_START_BYTE 250
 #define BLUETOOTH_TX 21
 #define BLUETOOTH_RX 20
-
-// LRFs
-// #define X_SHUT_LRF_1 (ROBOT_1 ? 26 : 37)
-// #define X_SHUT_LRF_2 (ROBOT_1 ? 27 : 41)
-// #define X_SHUT_LRF_3 (ROBOT_1 ? 20 : 2)
-// #define X_SHUT_LRF_4 (ROBOT_1 ? 40 : 30)
 
 // Function Declarations
 float normaliseHalfAngle(float angle);

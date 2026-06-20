@@ -23,9 +23,10 @@ float angleDiff(float angle_1, float angle_2) { // Finds the smallest angle betw
 
 float midAngle(uint8_t index_1, uint8_t index_2) { // Finds the middle angle of a cluster
     if (index_1 > index_2) {
-        index_2 += 32;
+        index_2 += 48;
     }
-    float angle = 3.75f + 0.5f * float(index_1 + index_2) * 11.25f; // For 2025 Light Sensor Board
+    float angle = 3.75f + 0.5f * float(index_1 + index_2) * 11.25f;
+    // float angle = 3.75f + 0.5f * float(index_1 + index_2) * 11.25f; // For 2025 Light Sensor Board
     return normaliseAngle(angle);
 }
 

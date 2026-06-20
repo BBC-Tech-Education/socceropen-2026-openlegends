@@ -28,7 +28,7 @@ float PID::update(float input, float setpoint, float modulus) {
         }
         derivative = difference / elapsedTime;
     } else {
-        derivative = -(error - lastError) / elapsedTime; // ? why -
+        derivative = -(error - lastError) / elapsedTime;
     }
     lastError = error;
     float correction = kp * error + ki * integral - kd * derivative;
