@@ -8,11 +8,11 @@
 /* Attack */
 #define ATTACK_SLOW_SPEED 0.0f
 #define ATTACK_FAST_SPEED 0.0f
-#define ATTACK_CLOSE_DISTANCE 0.0f
+#define ATTACK_CLOSE_DISTANCE 10.0f
 #define ATTACK_FAR_DISTANCE 0.0f
-#define ATTACK_SURGE_ANGLE 5.0f
+#define ATTACK_SURGE_ANGLE 10.0f
 #define ATTACK_SURGE_SPEED 0.0f
-#define ORBIT_MAX_OFFSET 90.0f
+#define ORBIT_MAX_OFFSET 60.0f
 #define ORBIT_MIN_MULTIPLIER 0.1f
 #define ORBIT_MAX_MULTIPLIER 1.0f
 
@@ -71,10 +71,10 @@
 #define MOTOR_NUM 4
 #define MOTOR_PWM_FREQ 15000.0f
 
-#define MOTOR_KP 0.01f
-#define MOTOR_KI 0.0f
-#define MOTOR_KD 0.0f
-#define MOTOR_ABS_MAX 0.5f
+// #define MOTOR_KP 0.01f
+// #define MOTOR_KI 0.0f
+// #define MOTOR_KD 0.0f
+// #define MOTOR_ABS_MAX 0.5f
 
 #define FL_PWM 28 // 29
 #define FL_INA 30 // 32
@@ -93,19 +93,21 @@
 #define BL_INB 9 // 10
 
 // Light Sensors
-#define LS_NUMBER 48
+#define LS_NUM 48
+#define LS_NUM_INNER 32
+#define LS_THRESH_BUFF 200
 #define LS_0 37
 #define LS_1 36
 #define LS_2 35
 #define LS_3 34
-#define LS_OUT 40
+#define LS_OUT_1 40
 #define LS_OUT_2 39
 #define LS_OUT_3 38
 #define LS_PWM 33
 
 // Camera
 #define CAMERA_SERIAL Serial1
-#define CAMERA_PACKET_NUMBER 8
+#define CAMERA_PACKET_NUMBER 14
 #define CAMERA_START_BYTE 255
 #define CAMERA_TX 0
 #define CAMERA_RX 1
@@ -118,13 +120,13 @@
 #define BLUETOOTH_RX 20
 
 // Function Declarations
-float normaliseHalfAngle(float angle);
-float normaliseAngle(float angle);
-float angleDiff(float angle_1, float angle_2);
-float midAngle(uint8_t index_1, uint8_t index_2);
-float smallMidAngle(float angle_1, float angle_2);
-float ballCamToDist(float ballPixelDistance);
-float goalCamToDist(float goalPixelDistance);
+int8_t sign(float value);
+float floatMod(float x, float m);
+float angleBetween(float angleCounterClockwise, float angleClockwise);
+float smallestAngleBetween(float angleCounterClockwise, float angleClockwise);
+float midAngleBetween(float angleCounterClockwise, float angleClockwise);
+uint8_t mod(int8_t x, int8_t m);
+bool angleIsInside(float angleBoundCounterClockwise, float angleBoundClockwise, float angleCheck);
 
 /* Trigonometry */
 #define RAD_TO_DEG_F 57.29578f

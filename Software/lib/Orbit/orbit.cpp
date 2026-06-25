@@ -12,26 +12,29 @@ float Orbit::speed(bool ball, bool attackGoal, float attackGoalAngle, float ball
     // float m = (ATTACK_FAST_SPEED - ATTACK_SLOW_SPEED)/(ATTACK_FAR_DISTANCE - ATTACK_CLOSE_DISTANCE);
     // float line = m * (ballDist - ATTACK_CLOSE_DISTANCE) + ATTACK_SLOW_SPEED;
     // moveSpeed = constrain(line, ATTACK_SLOW_SPEED, ATTACK_FAST_SPEED);
-    moveSpeed = ball ? 20.0f : 0.0f;
+    moveSpeed = ballDist == 0.0f ? 0.0f : 18.0f;
+    // Serial.println(moveSpeed);
     return moveSpeed;
 }
 
 float Orbit::angle(bool attackGoal, float attackGoalAngle, float ballAngle, float ballDist) {
-    float minorAngle = angleDiff(ballAngle, 0.0f);
+    float minorAngle = smallestAngleBetween(ballAngle, 0.0f);
     float surgeAngle = attackGoal ? attackGoalAngle : 0.0f;
 
-    if (minorAngle < ATTACK_SURGE_ANGLE && ballDist < ATTACK_CLOSE_DISTANCE) { // tune values
+    if (minorAngle < ATTACK_SURGE_ANGLE && 0.00304002f * ballDist * ballDist < ATTACK_CLOSE_DISTANCE) { // tune values
         return surgeAngle;
     }
 
-    float angleOffset = constrain(0.07f * minorAngle * minorAngle, 0.0f, ORBIT_MAX_OFFSET); // tune function
+    float angleOffset = constrain(4.0f * minorAngle, 0.0f, ORBIT_MAX_OFFSET);
+
+    float pixelToCm = 0.00304002f * ballDist * ballDist;
     float numerator = 1.0f;
-    float denominator = expf(0.1f * (ballDist - 75.0f)) + 1.0f;
+    float denominator = expf(0.06f * (pixelToCm - 60.0f)) + 1.0f;
     float distScaleFactor = constrain(numerator/denominator, ORBIT_MIN_MULTIPLIER, ORBIT_MAX_MULTIPLIER);
     float moveOffset = angleOffset * distScaleFactor;
 
     float moveAngle = ballAngle > 180.0f ? ballAngle - moveOffset : ballAngle + moveOffset;
-    return normaliseAngle(moveAngle);
+    return floatMod(moveAngle, 360.0f);
 }
 
 void Orbit::update(const CameraData& cameraData) {

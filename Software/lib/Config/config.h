@@ -13,7 +13,7 @@
 #define DEBUG (DEBUG_MOTORS || DEBUG_IMU || DEBUG_CAMERA || DEBUG_GOAL_CORRECT)
 
 /* ATTACK DIRECTION */
-#define BLUE_GOAL_ATTACK true
+#define BLUE_GOAL_ATTACK false
 // True: Attacking Blue Goal (Defending Yellow Goal)
 // False: Attacking Yellow Goal (Defending Blue Goal)
 

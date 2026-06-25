@@ -16,15 +16,14 @@ class Camera {
         
     private:
         uint8_t camPins[2] = {CAMERA_TX, CAMERA_RX};  
-        uint8_t camData[6] = {0};
+        uint8_t receivedPacket[12] = {0};
+        uint16_t camData[6] = {0};
 
-        float distance(uint8_t cx, uint8_t cy);
-        float angle(uint8_t cx, uint8_t cy);
+        float distance(uint16_t cx, uint16_t cy);
+        float angle(uint16_t cx, uint16_t cy);
 
         unsigned long camTime = 0;
-
-        bool yellowGoal;
-        bool blueGoal;
+        
 };
 
 #endif

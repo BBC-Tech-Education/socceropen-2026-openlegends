@@ -10,33 +10,43 @@ class LightSensors {
         LSData lsData;
         void init();
         void read();
-        float lineAngle();
-        float direction(float heading);
-        bool stopOnLine(bool ball, float ballAngle);
-        void update(const CameraData& cameraData, float heading);
+        void update(float heading);
+
+        float getLineAngle();
+        float getLineSize();
 
     private:
         uint8_t lightPins[4] = {LS_0, LS_1, LS_2, LS_3};
-        uint8_t lightOutPins[3] = {LS_OUT, LS_OUT_2, LS_OUT_3};
-        uint8_t lightPinsIndex[LS_NUMBER] = {8, 16, 17, 18, 19, 20, 21, 22, 23, 31, 30, 29, 28, 27, 26, 25, 24, 0, 1, 2, 3, 4, 5, 6, 7, 15, 14, 13, 12, 11, 10, 9, 34, 35, 36, 37, 38, 39, 47, 46, 45, 44, 43, 42, 41, 40, 32, 33}; // inner then outer
-        // do this again
-        uint8_t seesLine[LS_NUMBER] = {0};
-        uint8_t innerClusters[4][2] = {{0}};
-        uint8_t outerClusters[8][2] = {{0}};
-        uint8_t state = 1;
-        uint16_t lightValues[LS_NUMBER] = {0};
-        uint16_t whiteValues[LS_NUMBER] = {0}; 
-        float innerClusterAngles[4] = {0.0f};
-        float outerClusterAngles[8] = {0.0f};
-        float angleBetweenInnerClusters[4] = {0.0f};
-        float angleBetweenOuterClusters[8] = {0.0f};
-        float whiteAngle = -1.0f;
-        float avoidAngle = -1.0f;
-        float correctedLineAngle = -1.0f;
-        bool clusterStart;
-        bool line;
-        bool innerRing;
-        bool outerRing;
+        uint8_t lightOutPins[3] = {LS_OUT_1, LS_OUT_2, LS_OUT_3};
+
+        uint8_t muxIndex[48] = {
+        //   0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15
+            25, 26, 27, 28, 29, 30, 31,  0,  8,  7,  6,  5,  4,  3,  2,  1, // Mux 1
+             9, 10, 11, 12, 13, 14, 15, 16, 24, 23, 22, 21, 20, 19, 18, 17, // Mux 2
+            34, 35, 36, 37, 38, 39, 40, 41, 33, 32, 47, 46, 45, 44, 43, 42  // Mux 3
+        };
+
+        int8_t clusterNum;
+        int8_t outerClusterNum;
+        bool inCluster;
+
+        struct Cluster{
+            int8_t start = -1;
+            float midpoint = -1.0f;
+            int8_t end = -1;
+        };
+
+        uint16_t lightValues[LS_NUM] = {0};
+        uint16_t whiteCal[LS_NUM] = {0}; 
+        uint8_t whiteValues[LS_NUM] = {0};
+
+        float lineDir;
+        float lineSize;
+
+        bool onField = true;
+
+        float fieldLineAngle = -1.0f;
+        float fieldLineSize = -1.0f;
 };
 
 #endif

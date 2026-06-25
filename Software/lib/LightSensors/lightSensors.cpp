@@ -11,260 +11,392 @@ void LightSensors::init() {
 
     read();
 
-    for (uint8_t i = 0; i < LS_NUMBER; i++) {
-        whiteValues[i] = ROBOT_1 ? 900 : 900; // tune thresholds
+    for (uint8_t i = 0; i < LS_NUM; i++) {
+        whiteCal[i] = lightValues[i] + LS_THRESH_BUFF;
     }
 }
 
 void LightSensors::read() {
-    for (uint8_t channel = 0; channel < LS_NUMBER; channel++) { // Inner ring
-        uint8_t muxInput = lightPinsIndex[channel];
-
+    for (uint8_t i = 0; i < 16; i++) {
         for (uint8_t j = 0; j < 4; j++) {
-            digitalWrite(lightPins[j], (muxInput >> j) & 0x01);
+            digitalWrite(lightPins[j], (i >> j) & 0x01);
         }
 
         delayMicroseconds(10);
 
-        lightValues[channel] = analogRead((muxInput >= 32) ? LS_OUT_3 : (muxInput >= 16) ? LS_OUT_2 : LS_OUT);
-
-        // Serial.print(lightValues[channel]);
-        // Serial.print(" ");
+        lightValues[muxIndex[i]]      = analogRead(LS_OUT_1);
+        lightValues[muxIndex[i + 16]] = analogRead(LS_OUT_2);
+        lightValues[muxIndex[i + 32]] = analogRead(LS_OUT_3);
     }
+
+    // for (uint8_t i = 0; i < LS_NUM_INNER; i++) {
+    //     Serial.print(lightValues[i]);
+    //     Serial.print(" ");
+    // }
     // Serial.println();
+
 }
 
-float LightSensors::lineAngle() {
-    for (uint8_t i = 0; i < 4; i++) {
-        innerClusters[i][0] = 0;
-        innerClusters[i][1] = 0;
-        innerClusterAngles[i] = 0.0f;
-        angleBetweenInnerClusters[i] = 0;
+void LightSensors::update(float heading) { //inner ring for now
+
+    read();
+
+    for (uint8_t i = 0; i < LS_NUM; i++) {
+        whiteValues[i] = (lightValues[i] > whiteCal[i]);
     }
 
-    for (uint8_t i = 0; i < 8; i++) {
-        outerClusters[i][0] = 0;
-        outerClusters[i][1] = 0;
-        outerClusterAngles[i] = 0.0f;
-        angleBetweenOuterClusters[i] = 0;
-    }
-
-    line = false;
-
-    for (uint8_t i = 0; i < LS_NUMBER; i++) {
-        seesLine[i] = lightValues[i] >= whiteValues[i];
-        line |= seesLine[i];
-
-        // Serial.print(seesLine[i]);
-        // Serial.print(" ");        
-    }
+    
+    // Serial.println();
+    // for (uint8_t i = LS_NUM_INNER; i < LS_NUM; i++) {
+    //     Serial.print(whiteCal[i]);
+    //     Serial.print(" ");
+    // }
     // Serial.println();
 
-    // for (uint8_t i = 0; i < LS_NUMBER; i++) { // Fills in faulty phototransistors
-    //     uint8_t before = (i + (LS_NUMBER - 1)) % LS_NUMBER;
-    //     uint8_t after = (i + 1) % LS_NUMBER;
-        // if (seesLine[before] && !seesLine[i] && seesLine[after]) { // 0 surrounded by 1
-        //     seesLine[i] = 1;
-        // }
-        // else if (!seesLine[before] && seesLine[i] && !seesLine[after]) { // 1 surrounded by 0 (shouldn't happen because of thresholds)
-        //     seesLine[i] = 0;
-        // }
-    // }
+    // whiteValues[8] = 0;
 
-    /* Inner Ring */
-    innerRing = false;
-    clusterStart = false;
-    uint8_t innerCluster = 0;
-
-    // Top, going clockwise
-
-    for (uint8_t i = 0; i < LS_NUMBER - 16; i++) {
-        if (seesLine[i]) {
-            innerRing = true;
-            if (!clusterStart) { // Starts cluster
-                innerClusters[innerCluster][0] = i;
-                clusterStart = true;
-            } if (i == LS_NUMBER - 17) { // Ends cluster
-                innerClusters[innerCluster][1] = i;
-                innerCluster++;
-                clusterStart = false;
-            }
-        } else if (clusterStart) { // Ends cluster normally
-            innerClusters[innerCluster][1] = i - 1;
-            innerCluster++;
-            clusterStart = false;
+    for (uint8_t i = 0; i < LS_NUM_INNER; i++) {
+        if (!whiteValues[i]) {
+        //     whiteValues[i] = whiteValues[mod(i - 1, LS_NUM)]  || whiteValues[mod(i + 1, LS_NUM)];
+        // } else {
+            whiteValues[i] = (whiteValues[mod(i - 1, LS_NUM)] && whiteValues[mod(i + 1, LS_NUM)]);
         }
     }
 
-    if (seesLine[LS_NUMBER - 17] && seesLine[0]) { // Merge first and last clusters
-        innerClusters[0][0] = innerClusters[innerCluster - 1][0];
-        innerCluster--;
+    for (uint8_t i = 0; i < LS_NUM_INNER; i++) { // outer max increase 600 and a bit
+        Serial.print(lightValues[i]);
+        Serial.print(" ");
     }
 
-    /* Outer Ring */
-    outerRing = false;
-    clusterStart = false;
-    uint8_t outerCluster = 0;
+    clusterNum = 0;
+    inCluster = false;
+    LightSensors::Cluster ClusterArray[4];
+    lineDir = -1.0f;
+    lineSize = -1.0f;
 
-    // [32-35]=front, [36-39]=right, [40-43]=back, [44-47]=left
-
-    for (uint8_t i = LS_NUMBER - 16; i < LS_NUMBER; i++) {
-        
-        bool endOfGroup = (i == 35) || (i == 39) || (i == 43) || (i == 47);
-
-        if (seesLine[i]) {
-            outerRing = true;
-            if (!clusterStart) { // Starts cluster
-                outerClusters[outerCluster][0] = i;
-                clusterStart = true;
-            } if (endOfGroup) { // Ends cluster
-                outerClusters[outerCluster][1] = i;
-                outerCluster++;
-                clusterStart = false;
+    for (uint8_t i = 0; i < LS_NUM_INNER; i++) {
+        if (!inCluster) {
+            if (whiteValues[i]) {
+                ClusterArray[clusterNum].start = i;
+                inCluster = true;
             }
-        } else if (clusterStart) { // Ends cluster normally
-            outerClusters[outerCluster][1] = i - 1;
-            outerCluster++;
-            clusterStart = false;
+        } else {
+            if (!whiteValues[i]) {
+                ClusterArray[clusterNum].end = i - 1;
+                inCluster = false;
+                clusterNum++;
+            }
         }
     }
     
-    /* Line Angle Calculations */
-    if (innerRing) {
-        for (uint8_t i = 0; i < innerCluster; i++) {
-            innerClusterAngles[i] = midAngle(innerClusters[i][0], innerClusters[i][1]); // change midangle
-        }
-        if (innerCluster == 1) { // 1 cluster
-            whiteAngle = innerClusterAngles[0];
-        } else if (innerCluster == 2) { // 2 clusters
-            whiteAngle = smallMidAngle(innerClusterAngles[0], innerClusterAngles[1]); // change small mid angle
-        } else if (innerCluster == 3) { // 3 clusters
-            for (uint8_t i = 0; i < innerCluster; i++) {
-                angleBetweenInnerClusters[i] = angleDiff(innerClusterAngles[i], innerClusterAngles[(i + 1) % innerCluster]); // Smallest angle between clusters
-            }
-            uint8_t largestAngle = fmaxf(fmaxf(angleBetweenInnerClusters[0], angleBetweenInnerClusters[1]), angleBetweenInnerClusters[2]); // Largest angle between clusters
-            for (uint8_t i = 0; i < innerCluster; i++) {
-                if (angleBetweenInnerClusters[i] == largestAngle) { // whiteAngle midpoint of clusters furthest from each other, on the side of the remaining cluster
-                    whiteAngle = smallMidAngle(innerClusterAngles[i], innerClusterAngles[(i + 1) % innerCluster]); // Midpoint of minor arc between clusters
-                    if (angleDiff(whiteAngle, innerClusterAngles[(i + 2) % innerCluster]) > 90.0f) { // Wrong side lol
-                        whiteAngle = normaliseAngle(whiteAngle + 180.0f); // Flips whiteAngle
-                    }
-                    break;
-                }
-            }
-        } else { // More than 3 clusters
-            // two furthest clusters, other two find middle, then same logic as 3 clusters
-            // for (uint8_t i = 0; i < innerCluster; i++) {
-            //     angleBetweenInnerClusters[i] = angleDiff(innerClusterAngles[i], innerClusterAngles[(i + 1) % innerCluster]); // Smallest angle between clusters
-            // }
-            // uint8_t largestAngle = fmaxf(fmaxf(fmaxf(angleBetweenInnerClusters[0], angleBetweenInnerClusters[1]), angleBetweenInnerClusters[2]), angleBetweenInnerClusters[3]); // Largest angle between clusters
-            // for (uint8_t i = 0; i < innerCluster; i++) {
-            //     if (angleBetweenInnerClusters[i] == largestAngle) { // whiteAngle midpoint of clusters furthest from each other, on the side of the remaining cluster
-            //         whiteAngle = smallMidAngle(innerClusterAngles[i], innerClusterAngles[(i + 1) % innerCluster]); // Midpoint of minor arc between clusters
-            //         float midOtherTwo = smallMidAngle(innerClusterAngles[(i + 2) % innerCluster], innerClusterAngles[(i + 3) % innerCluster]);
-            //         if (angleDiff(whiteAngle, midOtherTwo) > 90.0f) { // Wrong side lol
-            //             whiteAngle = normaliseAngle(whiteAngle + 180.0f); // Flips whiteAngle
-            //         }
-            //         break;
-            //     }
-            // }
-        }
-    } else if (outerRing) {
-        hi
-    } else {
-        whiteAngle = -1.0f;
-    }
-
-
-
-    if (cluster == 0) { // No line
-        whiteAngle = -1.0f;
-    } else {
-        for (uint8_t i = 0; i < cluster; i++) {
-            clusterAngles[i] = midAngle(clusters[i][0], clusters[i][1]);
-        }
-        if (cluster == 1) { // 1 cluster
-            whiteAngle = clusterAngles[0];
-        } else if (cluster == 2) { // 2 clusters
-            whiteAngle = smallMidAngle(clusterAngles[0], clusterAngles[1]);
-        } else if (cluster == 3) { // 3 clusters
-            for (uint8_t i = 0; i < cluster; i++) {
-                angleBetweenClusters[i] = (uint8_t)(roundf(angleDiff(clusterAngles[i], clusterAngles[(i + 1) % cluster]))); // Smallest angle between clusters
-            }
-            uint8_t largestAngle = (uint8_t)max(max(angleBetweenClusters[0], angleBetweenClusters[1]), angleBetweenClusters[2]); // Largest angle between clusters
-            for (uint8_t i = 0; i < cluster; i++) {
-                if (angleBetweenClusters[i] == largestAngle) { // whiteAngle midpoint of clusters furthest from each other, on the side of the remaining cluster
-                    whiteAngle = smallMidAngle(clusterAngles[i], clusterAngles[(i + 1) % cluster]); // Midpoint of minor arc between clusters
-                    if (angleDiff(whiteAngle, clusterAngles[(i + (cluster - 1)) % cluster]) > 90.0f) { // Wrong side lol
-                        whiteAngle = normaliseAngle(whiteAngle + 180.0f); // Flips whiteAngle
-                    }
-                    break;
-                }
-            }
-        } else { // More than 3 clusters
-            // aaa
-        }
-    }
-    // for (uint8_t i = 0; i < cluster; i++) {
-    //     Serial.print(clusters[i][0]); Serial.print(" ");
-    //     Serial.print(clusters[i][1]); Serial.print(" ");
-    // }
-    // Serial.print("   ");
-    // Serial.printf("ClusterNo: %d\tWhiteAngle: %.1f", cluster, whiteAngle);
-    // Serial.println();
-    return whiteAngle;
-}
-
-float LightSensors::direction(float heading) {
-    float correctedAngle = normaliseAngle(whiteAngle + heading);
-    // Serial.printf("Line: %d\tState: %d\tWhiteAngle: %.1f\tCorrectedAngle: %.1f\tLineAngle: %.1f\n", line, state, whiteAngle, correctedAngle, lineAngle);
-    if (state == 1) { // State 1
-        if (line) { // State 2
-            state = 2;
-            correctedLineAngle = correctedAngle;
-        }
-
-    } else if (state == 4) { // State 4
-        if (line) {
-            state = 3;
-            correctedLineAngle = normaliseAngle(correctedAngle + 180.0f);
-        }
-
-    } else { // On line (State 2 or 3)
-        if (line) {
-            if (angleDiff(correctedLineAngle, correctedAngle) <= AVOID_ANGLE_FLIP) { // State 2
-                state = 2;
-                correctedLineAngle = correctedAngle;
-            } else { // State 3
-                state = 3;
-                correctedLineAngle = normaliseAngle(correctedAngle + 180.0f);
-            }
+    if (whiteValues[LS_NUM_INNER - 1]) {
+        if (whiteValues[0]) {
+            ClusterArray[0].start = ClusterArray[clusterNum].start;
         } else {
-            if (state == 2) {
-                state = 1;
-                correctedLineAngle = -1.0f;
+            ClusterArray[clusterNum].end = LS_NUM_INNER - 1;
+            clusterNum++;
+        }
+    }
+
+
+    if (clusterNum > 0) {
+        for (uint8_t i = 0; i < 3; i++) {
+            ClusterArray[i].midpoint = midAngleBetween(ClusterArray[i].start * 11.25f, ClusterArray[i].end * 11.25f);
+        }
+
+        // for (uint8_t i = 0; i < 2; i++) {
+        //     Serial.printf("CLUSTER %d: s - %d, e - %d, m - %.2f\t", i + 1, ClusterArray[i].start, ClusterArray[i].end, ClusterArray[i].midpoint);
+        // }
+        // Serial.println();
+        // Serial.printf("CLUSTER 3: s - %d, e - %d, m - %.2f\n", ClusterArray[2].start, ClusterArray[2].end, ClusterArray[2].midpoint);
+
+        // if (clusterNum == 4) {
+        //     lineDir = fieldLineAngle;
+        // }
+        if (clusterNum == 3) {
+            float angleDiff12 = angleBetween(ClusterArray[0].midpoint, ClusterArray[1].midpoint);
+            float angleDiff23 = angleBetween(ClusterArray[1].midpoint, ClusterArray[2].midpoint);
+            float angleDiff31 = angleBetween(ClusterArray[2].midpoint, ClusterArray[0].midpoint);
+            float biggestAngle = fmaxf(angleDiff12, fmaxf(angleDiff23, angleDiff31));
+
+            if(biggestAngle == angleDiff12) {
+                lineDir = midAngleBetween(ClusterArray[1].midpoint, ClusterArray[0].midpoint);
+                lineSize = angleBetween(ClusterArray[1].midpoint, ClusterArray[0].midpoint) <= 180.0f ? 1.0f - cosf(DEG_TO_RAD_F * angleBetween(ClusterArray[1].midpoint, ClusterArray[0].midpoint) / 2.0f) : 1.0f;
+            } else if(biggestAngle == angleDiff23) {
+                lineDir = midAngleBetween(ClusterArray[2].midpoint, ClusterArray[1].midpoint);
+                lineSize = angleBetween(ClusterArray[2].midpoint, ClusterArray[1].midpoint) <= 180.0f ? 1.0f - cosf(DEG_TO_RAD_F * angleBetween(ClusterArray[2].midpoint, ClusterArray[1].midpoint) / 2.0f) : 1.0f;
             } else {
-                state = 4;
+                lineDir = midAngleBetween(ClusterArray[0].midpoint, ClusterArray[2].midpoint);
+                lineSize = angleBetween(ClusterArray[0].midpoint, ClusterArray[2].midpoint) <= 180.0f ? 1.0f - cosf(DEG_TO_RAD_F * angleBetween(ClusterArray[0].midpoint, ClusterArray[2].midpoint) / 2.0f) : 1.0f;
+            }
+        } else if (clusterNum == 2) {
+            bool clockwise = angleBetween(ClusterArray[0].midpoint, ClusterArray[1].midpoint) <= 180.0f;
+            lineDir = clockwise ? midAngleBetween(ClusterArray[0].midpoint, ClusterArray[1].midpoint) : midAngleBetween(ClusterArray[1].midpoint, ClusterArray[0].midpoint);
+            lineSize = 1.0f - cosf(DEG_TO_RAD_F * (clockwise ? angleBetween(ClusterArray[0].midpoint, ClusterArray[1].midpoint) / 2.0f : angleBetween(ClusterArray[1].midpoint, ClusterArray[0].midpoint) / 2.0f));
+        } else {
+            lineDir = ClusterArray[0].midpoint;
+            lineSize = 1.0f - cosf(DEG_TO_RAD_F * angleBetween(ClusterArray[0].start * 11.25f, ClusterArray[0].end * 11.25f) / 2.0f);
+        }
+    } else {
+        // Check outer ring
+
+        if (whiteValues[32] || whiteValues[33] || whiteValues[34] || whiteValues[35]) {
+            ClusterArray[0].midpoint = 0.0f;
+            clusterNum ++;
+        }
+
+        if (whiteValues[36] || whiteValues[37] || whiteValues[38] || whiteValues[39]) {
+            ClusterArray[1].midpoint = 90.0f;
+            clusterNum ++;
+        }
+
+        if (whiteValues[40] || whiteValues[41] || whiteValues[42] || whiteValues[43]) {
+            ClusterArray[2].midpoint = 180.0f;
+            clusterNum ++;
+        }
+
+        if (whiteValues[44] || whiteValues[45] || whiteValues[46] || whiteValues[47]) {
+            ClusterArray[3].midpoint = 270.0f;
+            clusterNum ++;
+        }
+
+        if (clusterNum == 2) {
+            if (ClusterArray[0].midpoint != -1.0f) {
+                if (ClusterArray[1].midpoint != -1.0f) {
+                    lineDir = 45.0f;
+                    lineSize = 0.1f;
+                } else if (ClusterArray[3].midpoint != -1.0f) {
+                    lineDir = 315.0f;
+                    lineSize = 0.1f;
+                }
+            } else if (ClusterArray[2].midpoint != -1.0f) {
+                if (ClusterArray[1].midpoint != -1.0f) {
+                    lineDir = 135.0f;
+                    lineSize = 0.1f;
+                } else if (ClusterArray[3].midpoint != -1.0f) {
+                    lineDir = 225.0f;
+                    lineSize = 0.1f;
+                }
+            }
+        } else if (clusterNum == 1) {
+            for (uint8_t i = 0; i < 4; i++) {
+                if (ClusterArray[i].midpoint != -1.0f) {
+                    lineDir = ClusterArray[i].midpoint;
+                }
+            }
+            lineSize = 0.1f;
+        }
+
+    }
+
+    // Serial.printf("Direction: %.2f\tSize: %.2f\n", lineDir, lineSize);
+
+    bool noLine = (lineDir == -1.0f);
+    float lineDirection = noLine ? -1.0f : floatMod(450.0f - lineDir + heading, 360.0f);
+    if (onField) {
+        if (lineDir != -1.0f) {
+            fieldLineAngle = lineDirection;
+            fieldLineSize = lineSize;
+            onField = false;
+        }
+    } else {
+        if (fieldLineSize == 3.0f) {
+            if (lineDir != -1.0f && smallestAngleBetween(lineDirection, fieldLineAngle) >= 60.0f) {
+                fieldLineAngle = floatMod(lineDirection + 180.0f, 360.0f);
+                fieldLineSize = 2.0f - lineSize;
+            }
+        } else {  
+            if (lineDir == -1.0f) {
+                if (fieldLineSize <= 1.0f) {
+                    onField = true;
+                    fieldLineAngle = -1.0f;
+                    fieldLineSize = -1.0f;
+                } else {
+                    fieldLineSize = 3.0f;
+                }
+            } else {
+                if (smallestAngleBetween(lineDirection, fieldLineAngle) <= 90.0f) {
+                    fieldLineAngle = lineDirection;
+                    fieldLineSize = lineSize;
+                } else {
+                    fieldLineAngle = floatMod(lineDirection + 180.0f, 360.0f);
+                    fieldLineSize = 2.0f - lineSize;
+                }
             }
         }
     }
-    avoidAngle = (state != 1) ? normaliseAngle(correctedLineAngle + 180.0f) : -1.0f;
-    return avoidAngle;
+    Serial.print("\t");
+    Serial.print(lineDirection);
+    Serial.print("\t");
+    Serial.print(clusterNum);
+    Serial.println();
+    // Serial.printf("ABSOLUTE ----- Direction: %.2f\tSize: %.2f\n", fieldLineAngle, fieldLineSize);
 }
 
-bool LightSensors::stopOnLine(bool ball, float ballAngle) {
-    if (ball && state == 2) {
-        bool stop = angleDiff(ballAngle, whiteAngle) < AVOID_ANGLE_STOP;
-        return stop;
-    } else {
-        return false;
-    }
+float LightSensors::getLineAngle() {
+    return fieldLineAngle;
 }
 
-void LightSensors::update(const CameraData& cameraData, float heading) {
-    read();
-    lsData.lineAngle = lineAngle();
-    lsData.avoidAngle = direction(heading);
-    lsData.stopOnLine = stopOnLine(cameraData.ball, cameraData.ballAngle);
-    // avoid speed (scalar resolute?)
+float LightSensors::getLineSize() {
+    return fieldLineSize;
 }
+
+    //     if (whiteValues[i] == 1) {
+    //         if (!inCluster) {
+    //             inCluster = true;
+    //             clusterNum++;
+    //             ClusterArray[clusterNum].start = i;
+    //         } if (i == 31 && whiteValues[0] == 1) {
+    //             ClusterArray[0].start = ClusterArray[clusterNum].start;
+    //             clusterNum--;
+    //         }
+    //     }
+    //     else {
+    //         if (inCluster) {
+    //             inCluster = false;
+    //             ClusterArray[clusterNum].end = i - 1;
+    //             float diff = angleDiff(ClusterArray[clusterNum].start * 11.25f, ClusterArray[clusterNum].end * 11.25f);
+    //             ClusterArray[clusterNum].midpoint = normaliseAngle(ClusterArray[clusterNum].start * 11.25f + 0.5f * diff);
+    //             // ClusterArray[clusterNum].midpoint = -1 * (float)(smallMidAngle(ClusterArray[clusterNum].end * (float)(360/LS_NUM_INNER), ClusterArray[clusterNum].start * (float)(360/LS_NUM_INNER))) + 360.0f;
+    //         }
+    //     }
+    // }
+    // // Serial.println(ClusterArray[0].midpoint);
+
+    // switch (clusterNum) {
+    //     case -1:
+    //         whiteAngle = -1.0f;
+    //         break;
+
+    //     case 0:
+    //         whiteAngle = ClusterArray[0].midpoint;
+    //         break;
+
+    //     case 1:
+    //         whiteAngle = smallMidAngle(ClusterArray[0].midpoint, ClusterArray[1].midpoint);
+    //         break;
+        
+    //     case 2: {
+    //         float angleDiff01 = angleDiff(ClusterArray[0].midpoint, ClusterArray[1].midpoint);
+    //         float angleDiff12 = angleDiff(ClusterArray[1].midpoint, ClusterArray[2].midpoint);
+    //         float angleDiff20 = angleDiff(ClusterArray[2].midpoint, ClusterArray[0].midpoint);
+    //         float biggestAngle = fmaxf(angleDiff01, fmaxf(angleDiff12, angleDiff20));
+    //         if (angleDiff01 == biggestAngle) {
+    //             whiteAngle = smallMidAngle(ClusterArray[0].midpoint, ClusterArray[1].midpoint);
+    //         } else if (angleDiff12 == biggestAngle) {
+    //             whiteAngle = smallMidAngle(ClusterArray[1].midpoint, ClusterArray[2].midpoint);
+    //         } else {
+    //             whiteAngle = smallMidAngle(ClusterArray[2].midpoint, ClusterArray[0].midpoint);
+    //         }
+
+    //         Serial.print(clusterNum);
+    //         Serial.print(" ");
+    //         for (uint8_t i = 0; i < 3; i++) {
+    //             Serial.print(ClusterArray[i].midpoint);
+    //             Serial.print(" ");
+    //         }
+    //         Serial.println(whiteAngle);
+
+    //         break;
+    //     }
+    
+
+    
+    
+    //check which angles the outer hits    
+    // for (uint8_t i = LS_NUM_INNER; i < LS_NUM; i++) {
+    //     if (i < 36 && whiteValues[i] == 1) {
+    //         outerClusterNum = 0;
+    //         outerClusterAngles[0] = 0.0f;
+    //     }
+    //     else if (i > 35 && i < 40 && whiteValues[i] == 1) {
+    //         outerClusterNum = 1;
+    //         outerClusterAngles[1] = 90.0f;
+    //     }
+    //     else if (i > 39 && i < 44 && whiteValues[i] == 1) {
+    //         outerClusterNum = 2;
+    //         outerClusterAngles[2] = 180.0f;
+    //     }
+    //     else if (i > 43 && whiteValues[i] == 1) {
+    //         outerClusterNum = 3;
+    //         outerClusterAngles[3] = 270.0f;
+    //     }
+    // }
+    
+    // Serial.println(outerClusterAngles[outerClusterNum]);
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    // delay(50);
+//     return whiteAngle;
+// }
+
+// float LightSensors::direction(float heading) {
+//     float correctedAngle = normaliseAngle(whiteAngle + heading);
+//     // Serial.printf("Line: %d\tState: %d\tWhiteAngle: %.1f\tCorrectedAngle: %.1f\tLineAngle: %.1f\n", line, state, whiteAngle, correctedAngle, lineAngle);
+//     if (state == 1) { // State 1
+//         if (line) { // State 2
+//             state = 2;
+//             correctedLineAngle = correctedAngle;
+//         }
+
+//     } else if (state == 4) { // State 4
+//         if (line) {
+//             state = 3;
+//             correctedLineAngle = normaliseAngle(correctedAngle + 180.0f);
+//         }
+
+//     } else { // On line (State 2 or 3)
+//         if (line) {
+//             if (angleDiff(correctedLineAngle, correctedAngle) <= AVOID_ANGLE_FLIP) { // State 2
+//                 state = 2;
+//                 correctedLineAngle = correctedAngle;
+//             } else { // State 3
+//                 state = 3;
+//                 correctedLineAngle = normaliseAngle(correctedAngle + 180.0f);
+//             }
+//         } else {
+//             if (state == 2) {
+//                 state = 1;
+//                 correctedLineAngle = -1.0f;
+//             } else {
+//                 state = 4;
+//             }
+//         }
+//     }
+//     avoidAngle = (state != 1) ? normaliseAngle(correctedLineAngle + 180.0f) : -1.0f;
+//     return avoidAngle;
+// }
+
+// bool LightSensors::stopOnLine(bool ball, float ballAngle) {
+//     if (ball && state == 2) {
+//         bool stop = angleDiff(ballAngle, whiteAngle) < AVOID_ANGLE_STOP;
+//         return stop;
+//     } else {
+//         return false;
+//     }
+// }
+
+// void LightSensors::update(const CameraData& cameraData, float heading) {
+//     read();
+//     float angle;
+//     float rawAngle = lineAngle();
+//     if (rawAngle == -1.0f) {
+//         angle = -1.0f;
+//     } else {
+//         angle = normaliseAngle(450.0f - rawAngle);
+//     }
+//     // Serial.println(angle);
+//     // Serial.println(angle);
+//     // lsData.lineAngle = lineAngle();
+//     // Serial.println(lsData.whiteAngle);
+//     // lsData.avoidAngle = direction(heading);
+//     // lsData.stopOnLine = stopOnLine(cameraData.ball, cameraData.ballAngle);
+//     // avoid speed (scalar resolute?)
+// }
