@@ -9,7 +9,7 @@ FRAME_HEIGHT = 400
 FRAME_WIDTH = 400
 FRAME_CX = 200
 FRAME_CY = 200
-FRAME_R = 190
+FRAME_R = 200 # Silver: 190, Black: 200
 
 GOAL_MIN_AREA = 200
 GOAL_MIN_PIXELS = 100
@@ -22,7 +22,7 @@ BLUE = 4
 
 
 # Ball, Yellow, Blue
-THRESHOLDS = [(38, 67, 21, 67, 30, 59), (34, 58, -10, 13, 19, 40), (29, 37, -13, 7, -29, -9)]
+THRESHOLDS = [(48, 86, 13, 68, 40, 61), (47, 70, -9, 14, 26, 47), (34, 41, -18, -4, -22, -2)]
 
 
 led = LED("LED_GREEN")
@@ -55,7 +55,7 @@ if CALIBRATION:
     while(True):
         clock.tick()
         img = cam.snapshot()
-        # img.mask_circle(FRAME_CX, FRAME_CY, FRAME_R)
+        img.mask_circle(FRAME_CX, FRAME_CY, FRAME_R)
 
         print("Gain:", cam.gain_db(), "Exposure:", cam.exposure_us())
 
@@ -138,5 +138,6 @@ else:
         uart.writechar((data[6] >> 8) & 255)
         uart.writechar(data[7] & 255)
         uart.writechar((data[7] >> 8) & 255)
+        # print(clock.fps())
 
         # print(data[2], data[2] & 255, (data[2] >> 8) & 255)

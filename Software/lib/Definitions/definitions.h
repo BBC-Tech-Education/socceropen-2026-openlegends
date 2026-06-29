@@ -6,12 +6,12 @@
 #include "config.h"
 
 /* Attack */
-#define ATTACK_SLOW_SPEED 0.0f
-#define ATTACK_FAST_SPEED 0.0f
-#define ATTACK_CLOSE_DISTANCE 10.0f
-#define ATTACK_FAR_DISTANCE 0.0f
-#define ATTACK_SURGE_ANGLE 10.0f
-#define ATTACK_SURGE_SPEED 0.0f
+#define ATTACK_SLOW_SPEED 10.0f
+#define ATTACK_FAST_SPEED 25.0f
+#define ATTACK_CLOSE_DISTANCE 20.0f
+// #define ATTACK_FAR_DISTANCE 0.0f
+#define ATTACK_SURGE_ANGLE 4.0f
+#define ATTACK_SURGE_SPEED 30.0f
 #define ORBIT_MAX_OFFSET 60.0f
 #define ORBIT_MIN_MULTIPLIER 0.1f
 #define ORBIT_MAX_MULTIPLIER 1.0f
@@ -37,15 +37,15 @@
 // Increase P until constant oscillation
 // Halve P
 
-#define IMU_KP (ROBOT_1 ? 0.5f : 0.0f)
+#define IMU_KP (ROBOT_1 ? 0.63f : 0.0f) // 0.5f
 #define IMU_KI (ROBOT_1 ? 0.0f : 0.0f)
-#define IMU_KD (ROBOT_1 ? 0.03f : 0.0f)
+#define IMU_KD (ROBOT_1 ? 0.0325f : 0.0f) // 0.03f
 #define IMU_MAX (ROBOT_1 ? 0.0f : 0.0f)
 
 // Attacker Goal Tracking PID
-#define ATTACK_GOAL_TRACK_KP (ROBOT_1 ? 0.125f : 0.0f) // High P
+#define ATTACK_GOAL_TRACK_KP (ROBOT_1 ? 0.2f : 0.0f) // High P
 #define ATTACK_GOAL_TRACK_KI (ROBOT_1 ? 0.0f : 0.0f)
-#define ATTACK_GOAL_TRACK_KD (ROBOT_1 ? 0.02f : 0.0f) // No D?
+#define ATTACK_GOAL_TRACK_KD (ROBOT_1 ? 0.0f : 0.0f) // No D?
 #define ATTACK_GOAL_TRACK_MAX (ROBOT_1 ? 25.0f : 0.0f)
 
 // Defender Goal Tracking PID
@@ -95,7 +95,7 @@
 // Light Sensors
 #define LS_NUM 48
 #define LS_NUM_INNER 32
-#define LS_THRESH_BUFF 200
+#define LS_THRESH_BUFF 300
 #define LS_0 37
 #define LS_1 36
 #define LS_2 35
@@ -133,29 +133,14 @@ bool angleIsInside(float angleBoundCounterClockwise, float angleBoundClockwise, 
 #define DEG_TO_RAD_F 0.017453293f
 
 /* Structs */
-struct LSData {
-    bool stopOnLine;
-    float lineAngle;
-    float avoidSpeed;
-    float avoidAngle;
-};
-
 struct CameraData {
-    bool newData;
-    bool ball;
-    bool attackGoal;
-    bool defendGoal;
     float ballAngle;
     float ballDist;
     float attackGoalAngle;
     float attackGoalDist;
     float defendGoalAngle;
     float defendGoalDist;
-};
-
-struct OrbitData {
-    float orbitSpeed;
-    float orbitAngle;
+    uint8_t fps;
 };
 
 // struct BluetoothData {

@@ -5,36 +5,20 @@
 #include <definitions.h>
 #include <lightSensors.h>
 #include <motors.h>
-#include <orbit.h>
 #include <PID.h>
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55, BNO055_ADDRESS_B, &Wire2);
 // Bluetooth bluetooth; 
 Camera camera;
 LightSensors lightSensors;
-LSData lsdata;
 Motors motors;
-Orbit orbit;
-OrbitData orbitdata;
-// IntervalTimer motorsOnTimer;
-// IntervalTimer ledTimer;
 
 PID imuPID(IMU_KP, IMU_KI, IMU_KD, IMU_MAX);
 PID attackGoalTrackPID(ATTACK_GOAL_TRACK_KP, ATTACK_GOAL_TRACK_KI, ATTACK_GOAL_TRACK_KD, ATTACK_GOAL_TRACK_MAX);
 
-// static volatile uint8_t motorsOn = 0;
-// static volatile uint8_t ledOn = 0;
-static float attackGoalAngle = 0.0f; // If first loop doesn't have camera values
-static float attackGoalRot = 0.0f;
-
-// void motorsOnUpdate() {
-//     motorsOn = (motorsOn + 1) % 100;
-// }
-
-// void toggleLED() {
-//     ledOn = 1 - ledOn;
-//     digitalWrite(LED_BUILTIN, ledOn);
-// }
+static float heading = 0.0f;
+static float absoluteOrbitAngle = 0.0f;
+static float orbitSpeed = 0.0f;
 
 void setup() {
     delay(100);
@@ -70,70 +54,103 @@ void setup() {
     // ledTimer.begin(toggleLED, 500000);
 }
 
-float getHeading() {
+void getHeading() { // Relative
     sensors_event_t imu;
     bno.getEvent(&imu);
 
-    float heading = imu.orientation.x;
+    heading = imu.orientation.x;
 
     if (heading > 180.0f) {
-        return heading - 360.0f;
+        heading -= 360.0f;
     }
-
-    return heading;
 }
 
-float getAttackGoalRot() {
-    attackGoalAngle = camera.cameraData.attackGoalAngle;
+float getAttackGoalRot() { // Relative not absolute (rotating doesn't change goal angle)
+    float attackGoalAngle = camera.cameraData.attackGoalAngle;
 
     if (attackGoalAngle > 180.0f) {
         attackGoalAngle -= 360.0f;
     }
 
-    attackGoalRot = -attackGoalTrackPID.update(attackGoalAngle, 0.0f);
+    float attackGoalRot = -attackGoalTrackPID.update(attackGoalAngle, 0.0f);
     return attackGoalRot;
 }
 
-void loop() {
-    // camera.update();
-    // orbit.update(camera.cameraData);
+void getOrbitMovement() {
+    float absoluteBallAngle = floatMod(camera.cameraData.ballAngle + heading, 360.0f);
+    float absoluteAttackGoalAngle = floatMod(camera.cameraData.attackGoalAngle + heading, 360.0f);
+    float minorAngle = smallestAngleBetween(absoluteBallAngle, absoluteAttackGoalAngle);
 
-    float heading = getHeading();
-    float compassRot = imuPID.update(heading, 0.0f);
-    // float attackGoalRot = getAttackGoalRot();
+    if (minorAngle < ATTACK_SURGE_ANGLE && camera.cameraData.ballDist < ATTACK_CLOSE_DISTANCE) { // Surge case
+        absoluteOrbitAngle = absoluteAttackGoalAngle;
+        orbitSpeed = ATTACK_SURGE_SPEED;
+        return; // can you have return in void
+    }
+
+    float angleOffset = constrain(3.0f * minorAngle, 0.0f, ORBIT_MAX_OFFSET);
+    float numerator = 1.0f;
+    float denominator = expf(0.06f * (camera.cameraData.ballDist - 60.0f)) + 1.0f;
+    float distScaleFactor = constrain(numerator/denominator, ORBIT_MIN_MULTIPLIER, ORBIT_MAX_MULTIPLIER);
+    float moveOffset = angleOffset * distScaleFactor;
+
+    float moveAngle = absoluteBallAngle > 180.0f ? absoluteBallAngle - moveOffset : absoluteBallAngle + moveOffset;
+    absoluteOrbitAngle = floatMod(moveAngle, 360.0f);
+    orbitSpeed = camera.cameraData.ballDist == 0.0f ? 0.0f : ((ATTACK_FAST_SPEED - ATTACK_SLOW_SPEED) / ORBIT_MAX_OFFSET) * moveOffset + ATTACK_SLOW_SPEED;;
+}
+
+bool batteryLow() {
+    float battVoltage = analogRead(14) * 0.01387096774f; // (3.3 * 4.3 / 1023);
+    if (battVoltage < 11.1f) {
+        motors.move(0.0f, 0.0f, 10.0f, 0.0f);
+        Serial.println("low");
+        return true;
+    }
+    return false;
+}
+
+void loop() {
+    if (batteryLow()) {
+        return; // can you have return in void
+    }
+    camera.update();
+    getHeading();
+    getOrbitMovement();
     lightSensors.update(heading);
-    float lineAngle = lightSensors.getLineAngle();
-    if (lineAngle != -1.0f) {
-        float avoidAngle = floatMod(lineAngle + 180.0f - heading, 360.0f);
-        motors.move(30.0f, avoidAngle, compassRot);
+    float absoluteLineAngle = lightSensors.getLineAngle();
+
+    float compassRot = imuPID.update(heading, 0.0f);
+    float attackGoalRot = getAttackGoalRot();
+    float attackRot = (camera.cameraData.attackGoalDist == 0.0f) ? compassRot : attackGoalRot;
+
+    if (absoluteLineAngle != -1.0f) {
+        float avoidAngle = floatMod(absoluteLineAngle + 180.0f - heading, 360.0f);
+        motors.move(35.0f, avoidAngle, attackRot, heading);
     } else {
-        motors.move(0.0f, 0.0f, compassRot);
+        motors.move(orbitSpeed, absoluteOrbitAngle, attackRot, heading);        
     }
     
     // float lineSize = lightSensors.getLineSize();
     // Serial.printf("lineAngle: %.2f\tlineSize: %.2f\tavoidAngle: %.2f", lineAngle, lineSize, avoidAngle);
     // Serial.println();
 
-    float battVoltage = analogRead(14) * 0.01387096774f; // (3.3 * 4.3 / 1023);
-    if (battVoltage < 11.5f) {
-        motors.move(0.0f, 0.0f, 10.0f);
-        Serial.println("low");
-    } 
-    // else {
-    //     motors.move(orbit.orbitData.orbitSpeed, orbit.orbitData.orbitAngle, compassRot);
-    // }
-
-
     #if DEBUG_IMU
     Serial.printf("Heading: %.2f\tCorrection: %.2f\tMode: %d", heading, compassRot, (uint8_t)bno.getMode());
     #endif
 
     #if DEBUG_CAMERA
-    Serial.printf("ballAngle: %.2f\tattackGoalAngle: %.2f\tdefendGoalAngle: %.2f\tFPS: %.2f", camera.cameraData.ballAngle, camera.cameraData.attackGoalAngle, camera.cameraData.defendGoalAngle, camera.fps);
+    Serial.printf("ballAngle: %.2f\tattackGoalAngle: %.2f\tdefendGoalAngle: %.2f\tFPS: %d", camera.cameraData.ballAngle, camera.cameraData.attackGoalAngle, camera.cameraData.defendGoalAngle, camera.cameraData.fps);
+    #endif
+
+    #if DEBUG_ORBIT
+    Serial.printf("ballAngle: %.2f\tballDist: %.2f\tabsoluteOrbitAngle: %.2f\torbitSpeed: %.2f", absoluteBallAngle, absoluteAttackGoalAngle, absoluteOrbitAngle, orbitSpeed);
     #endif
 
     #if DEBUG_GOAL_CORRECT
-    Serial.printf("attackGoalAngle: %.2f\tattackGoalRot: %.2f", attackGoalAngle, attackGoalRot);
+    Serial.printf("attackGoalRot: %.2f\tdefendGoalRot: %.2f", attackGoalRot, defendGoalRot);
+    #endif
+
+    #if DEBUG_LS
+    Serial.printf("absoluteLineAngle: %.2f\tavoidAngle: %.2f\tlineSize: %.2f\tavoidSpeed: %.2f", absoluteLineAngle, avoidAngle, lineSize, avoidSpeed);
     #endif
 
     #if DEBUG

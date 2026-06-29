@@ -1,81 +1,66 @@
 #include "camera.h"
 
-void Camera::init() {
-    pinMode(camPins[0], INPUT);
-    pinMode(camPins[1], OUTPUT);
+void Camera::init() { // Initialises camera UART
+    pinMode(camPins[0], INPUT); // TX Input
+    pinMode(camPins[1], OUTPUT); // RX Output
 
-    CAMERA_SERIAL.begin(115200);
+    CAMERA_SERIAL.begin(115200); // Sets baud rate
 }
 
-float Camera::distance(uint16_t cx, uint16_t cy) {
-    int16_t y = 200 - cy;
-    int16_t x = 200 - cx;
+float Camera::distance(uint16_t cx, uint16_t cy) { // Finds blob distance
+    int16_t y = 200 - cy; // y-coordinate of blob
+    int16_t x = 200 - cx; // x-coordinate of blob
 
     return sqrtf((float)(x*x + y*y));
 }
 
-float Camera::angle(uint16_t cx, uint16_t cy) {
-    int16_t y = 200 - cy;
-    int16_t x = 200 - cx;
+float Camera::angle(uint16_t cx, uint16_t cy) { // Finds blob angle (true bearing)
+    int16_t y = 200 - cy; // y-coordinate of blob
+    int16_t x = 200 - cx; // x-coordinate of blob
 
-    float angle = 450.0f - RAD_TO_DEG_F * atan2f((float)y, (float)x);
+    float angle = 450.0f - RAD_TO_DEG_F * atan2f((float)y, (float)x); // Polar to bearing
 
-    if (angle >= 360.0f) {
-        return angle - 360.0f;
-    }
-
-    return angle;
+    return floatMod(angle, 360.0f);
 }
 
 void Camera::update() {
-    cameraData.newData = false;
-
     if (CAMERA_SERIAL.available() >= CAMERA_PACKET_NUMBER) { // Full packet
         uint16_t first = CAMERA_SERIAL.read();
         uint16_t second = CAMERA_SERIAL.peek();
 
         if (first == CAMERA_START_BYTE && second == CAMERA_START_BYTE) { // Start byte
-            CAMERA_SERIAL.read();
+            cameraData.fps = (1000.0f)/(millis() - camTime);
+            camTime = millis();
 
-            // for (uint8_t byte = 0; byte < CAMERA_PACKET_NUMBER - 2; byte++) {
-            //     camData[byte] = CAMERA_SERIAL.read();
-            //     Serial.print(camData[byte]);
-            //     Serial.print(" ");
-            // }
-            // Serial.println();
+            CAMERA_SERIAL.read(); // Reads second start byte
 
             for (uint8_t byte = 0; byte < CAMERA_PACKET_NUMBER - 2; byte++) {
                 receivedPacket[byte] = CAMERA_SERIAL.read();
+                // Serial.print(receivedPacket[byte]);
+                // Serial.print(" ");
             }
+            // Serial.println();
 
-            for (uint8_t byte = 0; byte < (CAMERA_PACKET_NUMBER - 2) / 2; byte++) {
+            for (uint8_t byte = 0; byte < (CAMERA_PACKET_NUMBER - 2) / 2; byte++) { // Bitshifts back to 0-400
                 camData[byte] = receivedPacket[byte * 2] | (receivedPacket[byte * 2 + 1] << 8);
                 // Serial.print(camData[byte]);
                 // Serial.print(" ");
             }
             // Serial.println();
             
-            cameraData.ballDist = distance(camData[0], camData[1]); // Add pixel conversion
-            cameraData.ballAngle = angle(camData[0], camData[1]); // Add pixel conversion???
+            cameraData.ballDist = 0.00304002f * distance(camData[0], camData[1]) * distance(camData[0], camData[1]); // Converts pixel distance to cm
+            cameraData.ballAngle = (cameraData.ballDist == 0.0f) ? -1.0f : angle(camData[0], camData[1]);
 
             float yellowGoalDist = distance(camData[2], camData[3]); // Add pixel conversion
-            float yellowGoalAngle = angle(camData[2], camData[3]); // Add pixel conversion???
+            float yellowGoalAngle = (yellowGoalDist == 0.0f) ? -1.0f : angle(camData[2], camData[3]);
+
             float blueGoalDist = distance(camData[4], camData[5]); // Add pixel conversion
-            float blueGoalAngle = angle(camData[4], camData[5]); // Add pixel conversion???
+            float blueGoalAngle = (blueGoalDist == 0.0f) ? -1.0f : angle(camData[4], camData[5]);
             
-            // cameraData.attackGoal = BLUE_GOAL_ATTACK ? blueGoal : yellowGoal;
-            // cameraData.defendGoal = BLUE_GOAL_ATTACK ? yellowGoal : blueGoal;
             cameraData.attackGoalDist = BLUE_GOAL_ATTACK ? blueGoalDist : yellowGoalDist;
             cameraData.defendGoalDist = BLUE_GOAL_ATTACK ? yellowGoalDist : blueGoalDist;
             cameraData.attackGoalAngle = BLUE_GOAL_ATTACK ? blueGoalAngle : yellowGoalAngle;
             cameraData.defendGoalAngle = BLUE_GOAL_ATTACK ? yellowGoalAngle : blueGoalAngle;
         }
-    // } else {
-        // cameraData.attackGoal = false;
-        // cameraData.defendGoal = false;
-        // cameraData.attackGoalDist = -1.0f;
-        // cameraData.defendGoalDist = -1.0f;
-        // cameraData.attackGoalAngle = -1.0f;
-        // cameraData.defendGoalAngle = -1.0f;
     }
 }

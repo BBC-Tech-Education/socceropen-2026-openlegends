@@ -8,7 +8,7 @@ class Motors {
 public:
     Motors() {};
     void init();
-    void move(float speed, float direction, float rotation);
+    void move(float speed, float direction, float rotation, float heading);
 
 private:
     Motor motor[MOTOR_NUM] = {

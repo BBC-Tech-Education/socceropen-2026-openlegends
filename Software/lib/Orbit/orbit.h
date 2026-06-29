@@ -6,7 +6,6 @@
 class Orbit {
     public:
         Orbit() {};
-        OrbitData orbitData;
         void update(const CameraData& cameraData);
 
     private:

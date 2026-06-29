@@ -11,8 +11,6 @@ class Camera {
         
         void init();
         void update(); 
-
-        float fps;
         
     private:
         uint8_t camPins[2] = {CAMERA_TX, CAMERA_RX};  

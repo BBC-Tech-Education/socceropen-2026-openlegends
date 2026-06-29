@@ -7,7 +7,6 @@
 class LightSensors {
     public:
         LightSensors() {};
-        LSData lsData;
         void init();
         void read();
         void update(float heading);
@@ -26,11 +25,10 @@ class LightSensors {
             34, 35, 36, 37, 38, 39, 40, 41, 33, 32, 47, 46, 45, 44, 43, 42  // Mux 3
         };
 
-        int8_t clusterNum;
-        int8_t outerClusterNum;
+        uint8_t clusterNum;
         bool inCluster;
 
-        struct Cluster{
+        struct Cluster {
             int8_t start = -1;
             float midpoint = -1.0f;
             int8_t end = -1;

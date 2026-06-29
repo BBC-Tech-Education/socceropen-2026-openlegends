@@ -12,7 +12,7 @@ float Orbit::speed(bool ball, bool attackGoal, float attackGoalAngle, float ball
     // float m = (ATTACK_FAST_SPEED - ATTACK_SLOW_SPEED)/(ATTACK_FAR_DISTANCE - ATTACK_CLOSE_DISTANCE);
     // float line = m * (ballDist - ATTACK_CLOSE_DISTANCE) + ATTACK_SLOW_SPEED;
     // moveSpeed = constrain(line, ATTACK_SLOW_SPEED, ATTACK_FAST_SPEED);
-    moveSpeed = ballDist == 0.0f ? 0.0f : 18.0f;
+    moveSpeed = ballDist == 0.0f ? 0.0f : 25.0f;
     // Serial.println(moveSpeed);
     return moveSpeed;
 }
