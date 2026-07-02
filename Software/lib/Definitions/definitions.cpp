@@ -1,7 +1,11 @@
 #include "definitions.h"
 
-int8_t sign(float value) {
-    return value >= 0 ? 1 : -1;
+int8_t sign(int8_t value) {
+    return (value >= 0) ? 1 : -1;
+}
+
+float fsign(float value) {
+    return (value >= 0.0f) ? 1.0f : -1.0f;
 }
 
 float floatMod(float x, float m) {

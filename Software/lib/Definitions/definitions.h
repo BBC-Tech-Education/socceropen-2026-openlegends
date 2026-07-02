@@ -5,14 +5,17 @@
 #include <math.h>
 #include "config.h"
 
+#define COMM 2
+
 /* Attack */
-#define ATTACK_SLOW_SPEED 10.0f
-#define ATTACK_FAST_SPEED 25.0f
-#define ATTACK_CLOSE_DISTANCE 20.0f
+#define ATTACK_SLOW_SPEED (ROBOT_2 ? 20.0f : 20.0f) // 15.0f, 25.0f
+#define ATTACK_FAST_SPEED (ROBOT_2 ? 30.0f : 20.0f) // 25.0f, 40.0f
+#define ATTACK_CLOSE_DISTANCE 15.0f
+#define ATTACK_SURGE_DISTANCE 20.0f
 // #define ATTACK_FAR_DISTANCE 0.0f
-#define ATTACK_SURGE_ANGLE 4.0f
-#define ATTACK_SURGE_SPEED 30.0f
-#define ORBIT_MAX_OFFSET 60.0f
+#define ATTACK_SURGE_ANGLE 7.5f // 4.0f
+#define ATTACK_SURGE_SPEED 25.0f // 30.0f
+#define ORBIT_MAX_OFFSET 80.0f
 #define ORBIT_MIN_MULTIPLIER 0.1f
 #define ORBIT_MAX_MULTIPLIER 1.0f
 
@@ -37,34 +40,42 @@
 // Increase P until constant oscillation
 // Halve P
 
-#define IMU_KP (ROBOT_1 ? 0.63f : 0.0f) // 0.5f
+#define IMU_KP (ROBOT_1 ? 0.6f : 0.6f) // 0.5f 
+// bot 1 0.63, bot 2 0.63
+//       1.3f
+
+// p not too high (impacts orbit)
 #define IMU_KI (ROBOT_1 ? 0.0f : 0.0f)
-#define IMU_KD (ROBOT_1 ? 0.0325f : 0.0f) // 0.03f
+#define IMU_KD (ROBOT_1 ? (0.0575f / 2.0f) : (0.06f / 2.0f)) // 0.03f
+// bot 1 0.0325, bot 2 0.02
+//       0.0575
 #define IMU_MAX (ROBOT_1 ? 0.0f : 0.0f)
 
 // Attacker Goal Tracking PID
-#define ATTACK_GOAL_TRACK_KP (ROBOT_1 ? 0.2f : 0.0f) // High P
+#define ATTACK_GOAL_TRACK_KP (ROBOT_1 ? 0.15f : 0.15f) // High P
 #define ATTACK_GOAL_TRACK_KI (ROBOT_1 ? 0.0f : 0.0f)
 #define ATTACK_GOAL_TRACK_KD (ROBOT_1 ? 0.0f : 0.0f) // No D?
 #define ATTACK_GOAL_TRACK_MAX (ROBOT_1 ? 25.0f : 0.0f)
 
 // Defender Goal Tracking PID
-#define DEFEND_GOAL_TRACK_KP (ROBOT_1 ? 0.0f : 0.0f) // High P
+#define DEFEND_GOAL_TRACK_KP (ROBOT_1 ? 0.55f : 0.0f) // High P halve?
 #define DEFEND_GOAL_TRACK_KI (ROBOT_1 ? 0.0f : 0.0f)
-#define DEFEND_GOAL_TRACK_KD (ROBOT_1 ? 0.0f : 0.0f) // High D
+#define DEFEND_GOAL_TRACK_KD (ROBOT_1 ? 0.1f : 0.0f) // High D
 #define DEFEND_GOAL_TRACK_MAX (ROBOT_1 ? 0.0f : 0.0f)
 
 // Horizontal PID
-#define HORIZONTAL_KP (ROBOT_1 ? 0.0f : 0.0f)
+#define HORIZONTAL_KP (ROBOT_1 ? 0.0f : 0.0f) // 2.0f
 #define HORIZONTAL_KI (ROBOT_1 ? 0.0f : 0.0f)
 #define HORIZONTAL_KD (ROBOT_1 ? 0.0f : 0.0f) // No D
-#define HORIZONTAL_MAX (ROBOT_1 ? 0.0f : 0.0f) // Lower absoluteMax if overshooting big differences
+#define HORIZONTAL_MAX (ROBOT_1 ? 50.0f : 0.0f) // Lower absoluteMax if overshooting big differences
+// Horizontal P low Max high
 
 // Vertical PID
-#define VERTICAL_KP (ROBOT_1 ? 0.0f : 0.0f)
+#define VERTICAL_KP (ROBOT_1 ? 3.0f : 0.0f) // 7.5f
 #define VERTICAL_KI (ROBOT_1 ? 0.0f : 0.0f)
 #define VERTICAL_KD (ROBOT_1 ? 0.0f : 0.0f) // No D
 #define VERTICAL_MAX (ROBOT_1 ? 0.0f : 0.0f) // Lower absoluteMax if overshooting big differences
+// Vertical max low P high
 
 /* Pins */
 // Motors
@@ -95,7 +106,8 @@
 // Light Sensors
 #define LS_NUM 48
 #define LS_NUM_INNER 32
-#define LS_THRESH_BUFF 300
+#define LS_THRESH_BUFF (ROBOT_1 ? 250 : 400) // 250
+#define DIMMING (ROBOT_1 ? 125 : 175)
 #define LS_0 37
 #define LS_1 36
 #define LS_2 35
@@ -111,6 +123,8 @@
 #define CAMERA_START_BYTE 255
 #define CAMERA_TX 0
 #define CAMERA_RX 1
+#define CX (ROBOT_1 ? 220 : 210)
+#define CY (ROBOT_1 ? 200 : 201)
 
 // Bluetooth
 #define BLUETOOTH_SERIAL Serial5
@@ -121,6 +135,7 @@
 
 // Function Declarations
 int8_t sign(float value);
+float fsign(float value);
 float floatMod(float x, float m);
 float angleBetween(float angleCounterClockwise, float angleClockwise);
 float smallestAngleBetween(float angleCounterClockwise, float angleClockwise);

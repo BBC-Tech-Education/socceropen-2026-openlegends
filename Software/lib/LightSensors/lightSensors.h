@@ -14,6 +14,10 @@ class LightSensors {
         float getLineAngle();
         float getLineSize();
 
+        bool flip;
+        float lineSize;
+        float lineDir;
+
     private:
         uint8_t lightPins[4] = {LS_0, LS_1, LS_2, LS_3};
         uint8_t lightOutPins[3] = {LS_OUT_1, LS_OUT_2, LS_OUT_3};
@@ -38,8 +42,6 @@ class LightSensors {
         uint16_t whiteCal[LS_NUM] = {0}; 
         uint8_t whiteValues[LS_NUM] = {0};
 
-        float lineDir;
-        float lineSize;
 
         bool onField = true;
 

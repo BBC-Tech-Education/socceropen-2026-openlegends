@@ -8,15 +8,15 @@ void Camera::init() { // Initialises camera UART
 }
 
 float Camera::distance(uint16_t cx, uint16_t cy) { // Finds blob distance
-    int16_t y = 200 - cy; // y-coordinate of blob
-    int16_t x = 200 - cx; // x-coordinate of blob
+    int16_t y = CY - cy; // y-coordinate of blob
+    int16_t x = CX - cx; // x-coordinate of blob
 
     return sqrtf((float)(x*x + y*y));
 }
 
 float Camera::angle(uint16_t cx, uint16_t cy) { // Finds blob angle (true bearing)
-    int16_t y = 200 - cy; // y-coordinate of blob
-    int16_t x = 200 - cx; // x-coordinate of blob
+    int16_t y = CY - cy; // y-coordinate of blob
+    int16_t x = CX - cx; // x-coordinate of blob
 
     float angle = 450.0f - RAD_TO_DEG_F * atan2f((float)y, (float)x); // Polar to bearing
 
@@ -50,6 +50,7 @@ void Camera::update() {
             
             cameraData.ballDist = 0.00304002f * distance(camData[0], camData[1]) * distance(camData[0], camData[1]); // Converts pixel distance to cm
             cameraData.ballAngle = (cameraData.ballDist == 0.0f) ? -1.0f : angle(camData[0], camData[1]);
+            // Serial.println(cameraData.ballAngle);
 
             float yellowGoalDist = distance(camData[2], camData[3]); // Add pixel conversion
             float yellowGoalAngle = (yellowGoalDist == 0.0f) ? -1.0f : angle(camData[2], camData[3]);

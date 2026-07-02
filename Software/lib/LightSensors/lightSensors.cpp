@@ -28,7 +28,6 @@ void LightSensors::read() {
         lightValues[muxIndex[i + 16]] = analogRead(LS_OUT_2);
         lightValues[muxIndex[i + 32]] = analogRead(LS_OUT_3);
     }
-
     // for (uint8_t i = 0; i < LS_NUM_INNER; i++) {
     //     Serial.print(lightValues[i]);
     //     Serial.print(" ");
@@ -192,42 +191,57 @@ void LightSensors::update(float heading) { //inner ring for now
     bool noLine = (lineDir == -1.0f);
     float lineDirection = noLine ? -1.0f : floatMod(450.0f - lineDir + heading, 360.0f);
     if (onField) {
-        if (lineDir != -1.0f) {
+        if (lineDir != -1.0f) { // State 2
             fieldLineAngle = lineDirection;
             fieldLineSize = lineSize;
             onField = false;
+            flip = false;
         }
     } else {
         if (fieldLineSize == 3.0f) {
-            if (lineDir != -1.0f && smallestAngleBetween(lineDirection, fieldLineAngle) >= 60.0f) {
+            if (lineDir != -1.0f && smallestAngleBetween(lineDirection, fieldLineAngle) >= 60.0f) { // State 3
                 fieldLineAngle = floatMod(lineDirection + 180.0f, 360.0f);
                 fieldLineSize = 2.0f - lineSize;
+                flip = true; // ?
             }
         } else {  
             if (lineDir == -1.0f) {
-                if (fieldLineSize <= 1.0f) {
+                if (fieldLineSize <= 1.0f) { // State 1
                     onField = true;
                     fieldLineAngle = -1.0f;
                     fieldLineSize = -1.0f;
-                } else {
+                    flip = false;
+                } else { // State 4
                     fieldLineSize = 3.0f;
+                    flip = true;
                 }
             } else {
                 if (smallestAngleBetween(lineDirection, fieldLineAngle) <= 90.0f) {
                     fieldLineAngle = lineDirection;
                     fieldLineSize = lineSize;
+                    flip = false;
                 } else {
                     fieldLineAngle = floatMod(lineDirection + 180.0f, 360.0f);
                     fieldLineSize = 2.0f - lineSize;
+                    flip = true;
                 }
             }
         }
     }
     // Serial.print("\t");
-    // Serial.print(lineDirection);
-    // Serial.print("\t");
+    // Serial.print(lineSize);
+    // Serial.print(" ");
+    // Serial.print(fieldLineSize);
+    // Serial.print(" ");
+    // Serial.print(lineDir);
+    // Serial.print(" ");
+    // Serial.print(fieldLineAngle);
+    // Serial.print(" ");
+    // Serial.print(onField);
+    // Serial.print(" ");
     // Serial.print(clusterNum);
     // Serial.println();
+    // delay(100);
     // Serial.printf("ABSOLUTE ----- Direction: %.2f\tSize: %.2f\n", fieldLineAngle, fieldLineSize);
 }
 

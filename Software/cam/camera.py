@@ -3,26 +3,26 @@ from machine import LED, UART
 from math import sqrt
 
 
-CALIBRATION = False
+CALIBRATION = False # Gets gain and exposure and draws masking circle
 
 FRAME_HEIGHT = 400
 FRAME_WIDTH = 400
-FRAME_CX = 200
-FRAME_CY = 200
-FRAME_R = 200 # Silver: 190, Black: 200
+FRAME_CX = 210 # 220
+FRAME_CY = 201
+FRAME_R = 200 # Silver: 190, Black: 200 #193
 
 GOAL_MIN_AREA = 200
 GOAL_MIN_PIXELS = 100
-BALL_MIN_AREA = 5 #25 # 5
+BALL_MIN_AREA = 5 #25
 BALL_MIN_PIXELS = 5 #15
 
-BALL = 1
+BALL = 1 # blob.code(), binary
 YELLOW = 2
 BLUE = 4
 
 
 # Ball, Yellow, Blue
-THRESHOLDS = [(48, 86, 13, 68, 40, 61), (47, 70, -9, 14, 26, 47), (34, 41, -18, -4, -22, -2)]
+THRESHOLDS = [(34, 46, 27, 48, 11, 35), (36, 48, 3, 35, 19, 37), (25, 36, -7, 10, -27, -8)]
 
 
 led = LED("LED_GREEN")
@@ -42,6 +42,7 @@ if CALIBRATION:
 else:
     cam.auto_gain(False, gain_db=24.0824)
     cam.auto_exposure(False, exposure_us=16648) # 120fps: 8248;   60fps: 16648
+    cam.auto_whitebal(False)
 
 clock = time.clock()
 clock.reset()
@@ -77,8 +78,7 @@ else:
             blobY = blob.cy() - FRAME_CY
             mag = sqrt(blobX * blobX + blobY * blobY)
 
-
-            if mag > FRAME_R:
+            if mag > FRAME_R: # Makeshift masking circle
                 continue
 
             if blob.code() == BALL:
