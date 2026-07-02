@@ -8,9 +8,9 @@
 #define COMM 2
 
 /* Attack */
-#define ATTACK_SLOW_SPEED (ROBOT_2 ? 20.0f : 20.0f) // 15.0f, 25.0f
-#define ATTACK_FAST_SPEED (ROBOT_2 ? 30.0f : 20.0f) // 25.0f, 40.0f
-#define ATTACK_CLOSE_DISTANCE 15.0f
+#define ATTACK_SLOW_SPEED (ROBOT_1 ? 20.0f : 35.0f) // 15.0f, 25.0f
+#define ATTACK_FAST_SPEED (ROBOT_1 ? 30.0f : 40.0f) // 25.0f, 40.0f
+#define ATTACK_CLOSE_DISTANCE 30.0f // DON'T CHANGE THIS
 #define ATTACK_SURGE_DISTANCE 20.0f
 // #define ATTACK_FAR_DISTANCE 0.0f
 #define ATTACK_SURGE_ANGLE 7.5f // 4.0f
@@ -123,8 +123,8 @@
 #define CAMERA_START_BYTE 255
 #define CAMERA_TX 0
 #define CAMERA_RX 1
-#define CX (ROBOT_1 ? 220 : 210)
-#define CY (ROBOT_1 ? 200 : 201)
+#define CX (ROBOT_1 ? 235 : 210)
+#define CY (ROBOT_1 ? 195 : 201)
 
 // Bluetooth
 #define BLUETOOTH_SERIAL Serial5

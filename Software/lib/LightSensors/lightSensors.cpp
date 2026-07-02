@@ -202,7 +202,7 @@ void LightSensors::update(float heading) { //inner ring for now
             if (lineDir != -1.0f && smallestAngleBetween(lineDirection, fieldLineAngle) >= 60.0f) { // State 3
                 fieldLineAngle = floatMod(lineDirection + 180.0f, 360.0f);
                 fieldLineSize = 2.0f - lineSize;
-                flip = true; // ?
+                flip = true;
             }
         } else {  
             if (lineDir == -1.0f) {

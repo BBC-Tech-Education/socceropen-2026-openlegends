@@ -99,9 +99,14 @@ float getDefendGoalRot() { // Relative not absolute (rotating doesn't change goa
 }
 
 void getOrbitMovement() { // call function only if ball visible
-    float absoluteBallAngle = floatMod(camera.cameraData.ballAngle + heading, 360.0f);
+    float absoluteBallAngle = (camera.cameraData.ballDist != 0.0f ? floatMod(camera.cameraData.ballAngle + heading, 360.0f) : 0.0f);
     float absoluteAttackGoalAngle = floatMod(camera.cameraData.attackGoalAngle + heading, 360.0f);
-    float targetAngle = (camera.cameraData.attackGoalDist == 0.0f) ? 0.0f : absoluteAttackGoalAngle;
+    // make sure attack goal dist correct (not cm)
+
+    // 100 halfway
+    // second one when goal not visible
+    // float targetAngle = (camera.cameraData.attackGoalDist > 100 || camera.cameraData.attackGoalDist < 10) ? 0.0f : absoluteAttackGoalAngle;
+    float targetAngle = 0.0f;
 
     float dir = floatMod(absoluteBallAngle - targetAngle, 360.0f);
 
@@ -111,13 +116,18 @@ void getOrbitMovement() { // call function only if ball visible
     float angleAddition = ballAngleDifference * strengthFactor;
 
     orbitAngle = floatMod((absoluteBallAngle + angleAddition), 360.0f);
-    orbitSpeed = ATTACK_SLOW_SPEED + (ATTACK_FAST_SPEED - ATTACK_SLOW_SPEED) * (1.0f - (angleAddition/90.0f));
+    orbitSpeed = ATTACK_SLOW_SPEED + (ATTACK_FAST_SPEED - ATTACK_SLOW_SPEED) * (1.0f - fabsf(angleAddition/90.0f));
 
-    if (smallestAngleBetween(absoluteBallAngle, heading) <= 10.0f) {
+    if (camera.cameraData.ballDist == 0.0f){
+        orbitAngle = -1.0f;
+        orbitSpeed = 0.0f;
+    } else if ((smallestAngleBetween(absoluteBallAngle, heading) <= 10.0f) && (camera.cameraData.ballDist < ATTACK_SURGE_DISTANCE)) {
         Serial.println("ol");
-        orbitAngle = targetAngle;
-        orbitSpeed = 30.0f;
+        orbitAngle = absoluteBallAngle;
+        orbitSpeed = ATTACK_SURGE_SPEED + 20.0f;
     }
+    Serial.printf("%f %f", camera.cameraData.ballAngle, orbitAngle);
+    Serial.println();
     // increase fast speed undershoot more
     // decrease fast speed overshoot more
 }
@@ -157,52 +167,59 @@ void loop() {
     float absoluteLineAngle = lightSensors.getLineAngle();
     float avoidAngle = floatMod(absoluteLineAngle + 180.0f, 360.0f);
     float avoidSpeed = 60.0f;
-
-    // Attacker
     getOrbitMovement();
 
-    // Comment this out after below
-    if (ATTACK) { // Attacker
+    if (ROBOT_2) { // Attacker
         float attackGoalRot = getAttackGoalRot();
-        attackRot = (camera.cameraData.attackGoalDist <= 20.0f) ? compassRot : attackGoalRot; //9.5f
-        // Serial.println(camera.cameraData.attackGoalDist);
-
-        if (absoluteLineAngle != -1.0f) { // Sees line
-            // Serial.println("ok");
+        attackRot = (camera.cameraData.attackGoalDist > 50.0f) ? attackGoalRot : compassRot; //check if it is 50 outside goal box
+        if (camera.cameraData.ballDist <= 5.0f){ //don't see ball
+            if (smallestAngleBetween(absoluteLineAngle, 180.0f) < 45.0f){ //change 45 for curve of the goalbox
+                moveSpeed = 0.0f;
+            } else if (absoluteLineAngle != -1.0f){
+                moveAngle = avoidAngle;
+                moveSpeed = avoidSpeed;
+            } else if (camera.cameraData.defendGoalDist < 50.0f && camera.cameraData.defendGoalDist > 10.0f) { // echeck 50
+                moveSpeed = 40.0f; 
+                moveAngle = floatMod(camera.cameraData.defendGoalDist + heading, 360.0f);
+            } else {
+                moveSpeed = 20.0f; 
+                moveAngle = 180.0f;
+            }
+        } else if (fieldLineSize > 0.4f) { // other side of line
             moveSpeed = avoidSpeed;
             moveAngle = avoidAngle;
-            // if (camera.cameraData.ballDist != 0.0f) { // Sees ball: line slide
-            //     if (lightSensors.flip) {
-            //         moveSpeed = avoidSpeed;
-            //         moveAngle = avoidAngle;
-            //     } else {
-            //         moveSpeed = sqrtf(avoidSpeed * avoidSpeed + orbitSpeed * orbitSpeed);
-            //         moveAngle = atan2f(avoidAngle, orbitAngle) * RAD_TO_DEG_F;
-            //     }  
-            // }
+        } else if (absoluteLineAngle != -1.0f){ //see a line but safe
+            moveSpeed = sqrtf(avoidSpeed * avoidSpeed + orbitSpeed * orbitSpeed);
+            moveAngle = atan2f(avoidAngle, orbitAngle) * RAD_TO_DEG_F;
         } else { // Doesn't see line
-            if (camera.cameraData.ballDist <= 20.0f) { // Doesn't see ball: move backwards slowly 1 10
-                moveSpeed = 12.5f;
-                moveAngle = 180.0f;
-            } else { // Sees ball: normal orbit
-                moveSpeed = orbitSpeed;
-                moveAngle = orbitAngle;
-            }
+            moveSpeed = orbitSpeed;
+            moveAngle = orbitAngle;
         }
         if (digitalRead(COMM) == HIGH) {
-            motors.move(moveSpeed, moveAngle, compassRot, heading); // attackRot
-            // Serial.println(camera.cameraData.ballAngle);
-
-            
+            motors.move(moveSpeed, moveAngle, compassRot, heading); // attackRot            
         } else {
             // motors.move(0.0f, 0.0f, compassRot, heading); // attackRot
-            motors.move(moveSpeed, moveAngle, compassRot, heading); // attackRot
-
-            // motors.move(moveSpeed, moveAngle, attackRot, heading); // attackRot
+            motors.move(moveSpeed, moveAngle, compassRot, heading); // attackRot 
         }
-        // float avoidSpeed = 15.1509f * fieldLineSize + 18.54608;
-    } 
-    Serial.println(camera.cameraData.ballDist);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     // else { // Defender
     //     defend(fieldLineSize);
     //     float defendGoalRot = getDefendGoalRot();
