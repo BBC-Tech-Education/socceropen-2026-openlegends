@@ -31,6 +31,7 @@ void Camera::update() {
         if (first == CAMERA_START_BYTE && second == CAMERA_START_BYTE) { // Start byte
             cameraData.fps = (1000.0f)/(millis() - camTime);
             camTime = millis();
+            // Serial.println(cameraData.fps);
 
             CAMERA_SERIAL.read(); // Reads second start byte
 

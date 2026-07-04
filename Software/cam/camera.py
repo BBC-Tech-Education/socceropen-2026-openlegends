@@ -7,9 +7,9 @@ CALIBRATION = False # Gets gain and exposure and draws masking circle
 
 FRAME_HEIGHT = 400
 FRAME_WIDTH = 400
-FRAME_CX = 210 # 210, 235
-FRAME_CY = 201 # 201, 195
-FRAME_R = 200 # 200, 193
+FRAME_CX = 220 # Robot 2 210, Robot 1 220
+FRAME_CY = 210 # Robot 2 201, Robot 1 210
+FRAME_R = 193 # Robot 2 200, Robot 1 193
 
 GOAL_MIN_AREA = 200
 GOAL_MIN_PIXELS = 100
@@ -20,9 +20,9 @@ BALL = 1 # blob.code(), binary
 YELLOW = 2
 BLUE = 4
 
-
 # Ball, Yellow, Blue
-THRESHOLDS = [(62, 80, 11, 62, 26, 56), (41, 61, 6, 36, 21, 41), (25, 38, -8, 12, -23, 1)]
+THRESHOLDS = [(42, 67, 40, 70, 36, 57), (30, 41, -6, 10, 13, 30), (12, 21, -6, 6, -23, -10)]
+# THRESHOLDS = [(100, 100, 0, 0, 0, 0), (100, 100, 0, 0, 0, 0), (100, 100, 0, 0, 0, 0)]
 
 led = LED("LED_GREEN")
 led.on()
@@ -36,10 +36,11 @@ cam.window((FRAME_WIDTH, FRAME_HEIGHT))
 cam.snapshot(time=2000) # let auto‑exposure settle
 
 if CALIBRATION:
+    cam.auto_exposure(False, exposure_us=16648)
     print("Calibration Mode")
 
 else:
-    cam.auto_gain(False, gain_db=23.26472)
+    cam.auto_gain(False, gain_db=24.0824)
     cam.auto_exposure(False, exposure_us=16648) # 120fps: 8248;   60fps: 16648
     cam.auto_whitebal(False)
 
@@ -62,9 +63,12 @@ if CALIBRATION:
 else:
     while(True):
         clock.tick()
+        time2 = time.ticks_ms()
         img = cam.snapshot()
+        # print(time.ticks_ms() - time2, end="\t")
 
         blobs = img.find_blobs(THRESHOLDS, x_stride=5, y_stride=5, area_threshold=BALL_MIN_AREA, pixels_threshold=BALL_MIN_PIXELS, merge=False, margin=5)
+        # print(time.ticks_ms() - time2, len(blobs), end="\t")
 
         # Start bytes, ball, yellow, blue
         data = [255, 255, 500, 500, 500, 500, 500, 500]
@@ -103,8 +107,8 @@ else:
                     if blob.area() > (rawBlobs[2]).area():
                         rawBlobs[2] = blob
 
-
         if rawBlobs[0] != None:
+            # print(rawBlobs[0].area())
             data[2] = (rawBlobs[0]).cx()
             data[3] = (rawBlobs[0]).cy()
 
@@ -138,5 +142,6 @@ else:
         uart.writechar(data[7] & 255)
         uart.writechar((data[7] >> 8) & 255)
         # print(clock.fps())
+        # print(time.ticks_ms() - time2)
 
         # print(data[2], data[2] & 255, (data[2] >> 8) & 255)

@@ -58,13 +58,13 @@
 #define ATTACK_GOAL_TRACK_MAX (ROBOT_1 ? 25.0f : 0.0f)
 
 // Defender Goal Tracking PID
-#define DEFEND_GOAL_TRACK_KP (ROBOT_1 ? 0.55f : 0.0f) // High P halve?
+#define DEFEND_GOAL_TRACK_KP (ROBOT_1 ? 0.2f : 0.0f) // High P halve?
 #define DEFEND_GOAL_TRACK_KI (ROBOT_1 ? 0.0f : 0.0f)
-#define DEFEND_GOAL_TRACK_KD (ROBOT_1 ? 0.1f : 0.0f) // High D
+#define DEFEND_GOAL_TRACK_KD (ROBOT_1 ? 0.02f : 0.0f) // High D
 #define DEFEND_GOAL_TRACK_MAX (ROBOT_1 ? 0.0f : 0.0f)
 
 // Horizontal PID
-#define HORIZONTAL_KP (ROBOT_1 ? 1.5f : 0.0f) // 2.0f
+#define HORIZONTAL_KP (ROBOT_1 ? 0.75f : 0.0f) // 2.0f
 #define HORIZONTAL_KI (ROBOT_1 ? 0.0f : 0.0f)
 #define HORIZONTAL_KD (ROBOT_1 ? 0.0f : 0.0f) // No D
 #define HORIZONTAL_MAX (ROBOT_1 ? 50.0f : 0.0f) // Lower absoluteMax if overshooting big differences
@@ -74,7 +74,7 @@
 #define VERTICAL_KP (ROBOT_1 ? 20.0f : 0.0f) // 7.5f
 #define VERTICAL_KI (ROBOT_1 ? 0.0f : 0.0f)
 #define VERTICAL_KD (ROBOT_1 ? 0.0f : 0.0f) // No D
-#define VERTICAL_MAX (ROBOT_1 ? 0.0f : 0.0f) // Lower absoluteMax if overshooting big differences
+#define VERTICAL_MAX (ROBOT_1 ? 25.0f : 0.0f) // Lower absoluteMax if overshooting big differences
 // Vertical max low P high
 
 /* Pins */
@@ -123,8 +123,8 @@
 #define CAMERA_START_BYTE 255
 #define CAMERA_TX 0
 #define CAMERA_RX 1
-#define CX (ROBOT_1 ? 235 : 210)
-#define CY (ROBOT_1 ? 195 : 201)
+#define CX (ROBOT_1 ? 220 : 210)
+#define CY (ROBOT_1 ? 210 : 201)
 
 // Bluetooth
 #define BLUETOOTH_SERIAL Serial5
