@@ -47,16 +47,24 @@ void Camera::update() {
                 // Serial.print(" ");
             }
             // Serial.println();
-            
-            cameraData.ballDist = 0.00304002f * distance(camData[0], camData[1]) * distance(camData[0], camData[1]); // Converts pixel distance to cm
-            cameraData.ballAngle = (cameraData.ballDist == 0.0f) ? -1.0f : angle(camData[0], camData[1]);
+            cameraData.ballDist = (camData[0] == 500) ? 0.0f : 0.00304002f * distance(camData[0], camData[1]) * distance(camData[0], camData[1]); 
+            cameraData.ballAngle = (camData[0] == 500) ? -1.0f : angle(camData[0], camData[1]);
+
+            // cameraData.ballDist = 0.00304002f * distance(camData[0], camData[1]) * distance(camData[0], camData[1]); // Converts pixel distance to cm
+            // cameraData.ballAngle = (cameraData.ballDist == 0.0f) ? -1.0f : angle(camData[0], camData[1]);
             // Serial.println(cameraData.ballAngle);
 
-            float yellowGoalDist = distance(camData[2], camData[3]); // Add pixel conversion
-            float yellowGoalAngle = (yellowGoalDist == 0.0f) ? -1.0f : angle(camData[2], camData[3]);
+            float yellowGoalDist = (camData[2] == 500) ? 0.0f : distance(camData[2], camData[3]);
+            float yellowGoalAngle = (camData[2] == 500) ? -1.0f : angle(camData[2], camData[3]);
 
-            float blueGoalDist = distance(camData[4], camData[5]); // Add pixel conversion
-            float blueGoalAngle = (blueGoalDist == 0.0f) ? -1.0f : angle(camData[4], camData[5]);
+            // float yellowGoalDist = distance(camData[2], camData[3]); // Add pixel conversion
+            // float yellowGoalAngle = (yellowGoalDist == 0.0f) ? -1.0f : angle(camData[2], camData[3]);
+
+            float blueGoalDist = (camData[4] == 500) ? 0.0f : distance(camData[4], camData[5]);
+            float blueGoalAngle = (camData[4] == 500) ? -1.0f : angle(camData[4], camData[5]);
+
+            // float blueGoalDist = distance(camData[4], camData[5]); // Add pixel conversion
+            // float blueGoalAngle = (blueGoalDist == 0.0f) ? -1.0f : angle(camData[4], camData[5]);
             
             cameraData.attackGoalDist = BLUE_GOAL_ATTACK ? blueGoalDist : yellowGoalDist;
             cameraData.defendGoalDist = BLUE_GOAL_ATTACK ? yellowGoalDist : blueGoalDist;

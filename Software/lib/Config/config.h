@@ -3,11 +3,11 @@
 
 /* ROBOT */
 #define ROBOT_1 false
-#define ROBOT_2 (!ROBOT_1)
+#define ROBOT_2 (!ROBOT_1) // attacker
 // #define ATTACK true
 
 /* ATTACK DIRECTION */
-#define BLUE_GOAL_ATTACK true
+#define BLUE_GOAL_ATTACK false
 // True: Attacking Blue Goal (Defending Yellow Goal)
 // False: Attacking Yellow Goal (Defending Blue Goal)
 

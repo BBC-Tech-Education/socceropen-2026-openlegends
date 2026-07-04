@@ -60,7 +60,7 @@ void LightSensors::update(float heading) { //inner ring for now
     }
 
     // for (uint8_t i = 0; i < LS_NUM_INNER; i++) { // outer max increase 600 and a bit
-    //     Serial.print(lightValues[i]);
+    //     Serial.print(whiteValues[i]);
     //     Serial.print(" ");
     // }
     // Serial.println();

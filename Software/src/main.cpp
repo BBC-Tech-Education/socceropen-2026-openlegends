@@ -36,6 +36,10 @@ static float orbitAngle = 0.0f;
 
 static float defendSpeed = 0.0f;
 static float defendAngle = 0.0f;
+bool surge = false;
+#define SURGE_LENGTH 100
+
+unsigned long timer = millis();
 
 void setup() {
     delay(100);
@@ -101,12 +105,10 @@ float getDefendGoalRot() { // Relative not absolute (rotating doesn't change goa
 void getOrbitMovement() { // call function only if ball visible
     float absoluteBallAngle = (camera.cameraData.ballDist != 0.0f ? floatMod(camera.cameraData.ballAngle + heading, 360.0f) : 0.0f);
     float absoluteAttackGoalAngle = floatMod(camera.cameraData.attackGoalAngle + heading, 360.0f);
-    // make sure attack goal dist correct (not cm)
 
-    // 100 halfway
-    // second one when goal not visible
-    // float targetAngle = (camera.cameraData.attackGoalDist > 100 || camera.cameraData.attackGoalDist < 10) ? 0.0f : absoluteAttackGoalAngle;
-    float targetAngle = 0.0f;
+    float targetAngle = ((camera.cameraData.attackGoalDist == 0.0f) ? 0.0f : absoluteAttackGoalAngle);
+    // float targetAngle = 0.0f;
+    // Serial.println(camera.cameraData.attackGoalDist);
 
     float dir = floatMod(absoluteBallAngle - targetAngle, 360.0f);
 
@@ -121,13 +123,19 @@ void getOrbitMovement() { // call function only if ball visible
     if (camera.cameraData.ballDist == 0.0f){
         orbitAngle = -1.0f;
         orbitSpeed = 0.0f;
-    } else if ((smallestAngleBetween(absoluteBallAngle, heading) <= 10.0f) && (camera.cameraData.ballDist < ATTACK_SURGE_DISTANCE)) {
-        Serial.println("ol");
+    } else if ((smallestAngleBetween(absoluteBallAngle, targetAngle) <= 10.0f)) {
         orbitAngle = absoluteBallAngle;
-        orbitSpeed = ATTACK_SURGE_SPEED + 20.0f;
+        if ((camera.cameraData.ballDist < ATTACK_SURGE_DISTANCE) && (smallestAngleBetween(absoluteBallAngle, heading) <= 6.0f)) {
+            Serial.println("1");
+            orbitSpeed = ATTACK_SURGE_SPEED + 25.0f;
+        } 
+        else {
+            orbitSpeed = 22.5f;
+        }
+        
     }
-    Serial.printf("%f %f", camera.cameraData.ballAngle, orbitAngle);
-    Serial.println();
+    // Serial.println(smallestAngleBetween(absoluteBallAngle, targetAngle));
+
     // increase fast speed undershoot more
     // decrease fast speed overshoot more
 }
@@ -150,11 +158,11 @@ void defend(float fieldLineSize) {
     }
 
     side = defendHorizontalPID.update(absoluteBallAngle, 0.0f);
-    
-    fwd = defendVerticalPID.update(fieldLineSize, 1.0f);
-    defendSpeed = sqrtf(side * side + fwd * fwd);
-    defendAngle = atan2f(side, fwd) * RAD_TO_DEG_F;
+    fwd = defendVerticalPID.update(fieldLineSize, 0.75f);
+    defendSpeed = sqrtf((side * side) + (fwd * fwd));
+    defendAngle = floatMod((-1.0f*atan2f(side, -fwd) * RAD_TO_DEG_F) +360.0f, 360.0f);
     // Serial.printf("defendSpeed: %.2f\tdefendAngle: %.2f", defendSpeed, defendAngle);
+    Serial.println();
 }
 
 void loop() {
@@ -165,43 +173,127 @@ void loop() {
 
     float compassRot = imuPID.update(heading, 0.0f);
     float absoluteLineAngle = lightSensors.getLineAngle();
+    float rawLineAngle = floatMod(absoluteLineAngle - heading, 360.0f);
     float avoidAngle = floatMod(absoluteLineAngle + 180.0f, 360.0f);
-    float avoidSpeed = 60.0f;
+    float avoidSpeed = 70.0f;
     getOrbitMovement();
 
-    if (ROBOT_2) { // Attacker
-        float attackGoalRot = getAttackGoalRot();
-        attackRot = (camera.cameraData.attackGoalDist > 50.0f) ? attackGoalRot : compassRot; //check if it is 50 outside goal box
-        if (camera.cameraData.ballDist <= 5.0f){ //don't see ball
-            if (smallestAngleBetween(absoluteLineAngle, 180.0f) < 45.0f){ //change 45 for curve of the goalbox
-                moveSpeed = 0.0f;
-            } else if (absoluteLineAngle != -1.0f){
-                moveAngle = avoidAngle;
-                moveSpeed = avoidSpeed;
-            } else if (camera.cameraData.defendGoalDist < 50.0f && camera.cameraData.defendGoalDist > 10.0f) { // echeck 50
-                moveSpeed = 40.0f; 
-                moveAngle = floatMod(camera.cameraData.defendGoalDist + heading, 360.0f);
-            } else {
-                moveSpeed = 20.0f; 
-                moveAngle = 180.0f;
-            }
-        } else if (fieldLineSize > 0.4f) { // other side of line
-            moveSpeed = avoidSpeed;
+    if (ROBOT_1 || ROBOT_2) { // Attacker
+        // float attackGoalRot = getAttackGoalRot();
+        // attackRot = (camera.cameraData.attackGoalDist > 100.0f) ? attackGoalRot : compassRot; //check if it is 50 outside goal box
+        // if (fieldLineSize > 0.1f) {
+        //     moveSpeed = avoidSpeed;
+        //     moveAngle = avoidAngle;
+        // } 
+
+        if (absoluteLineAngle != -1.0f) { // sees line: out avoid
             moveAngle = avoidAngle;
-        } else if (absoluteLineAngle != -1.0f){ //see a line but safe
-            moveSpeed = sqrtf(avoidSpeed * avoidSpeed + orbitSpeed * orbitSpeed);
-            moveAngle = atan2f(avoidAngle, orbitAngle) * RAD_TO_DEG_F;
-        } else { // Doesn't see line
+            moveSpeed = avoidSpeed;
+        } else if (camera.cameraData.ballDist != 0.0f) { // sees ball: orbit normally
+            uint16_t timeSince = (millis() - timer)/1000;
             moveSpeed = orbitSpeed;
             moveAngle = orbitAngle;
         }
-        if (digitalRead(COMM) == HIGH) {
-            motors.move(moveSpeed, moveAngle, compassRot, heading); // attackRot            
-        } else {
-            // motors.move(0.0f, 0.0f, compassRot, heading); // attackRot
-            motors.move(moveSpeed, moveAngle, compassRot, heading); // attackRot 
+        else if (camera.cameraData.ballDist <= 5.0f){ //don't see ball
+            // if (smallestAngleBetween(180.0f, absoluteLineAngle) < 45.0f){ //change 45 for curve of the goalbox
+            //     moveSpeed = 0.0f;
+            // } else 
+            if (absoluteLineAngle != -1.0f){
+                moveAngle = avoidAngle;
+                moveSpeed = avoidSpeed;
+            } 
+            // else if (camera.cameraData.defendGoalDist != 0.0f) { // echeck 50
+            //     moveSpeed = 20.0f; 
+            //     moveAngle = floatMod(camera.cameraData.defendGoalDist + heading, 360.0f);
+            // } 
+            else {
+                moveSpeed = 20.0f; 
+                moveAngle = ROBOT_2 ? 0.0f : 180.0f;
+            }
+        } 
+        // else if (absoluteLineAngle != -1.0f){ //see a line but safe
+        //     moveSpeed = sqrtf(avoidSpeed * avoidSpeed + orbitSpeed * orbitSpeed);
+        //     moveAngle = atan2f(avoidAngle, orbitAngle) * RAD_TO_DEG_F;
+        // } 
+        else { // Doesn't see line
+            moveSpeed = orbitSpeed;
+            moveAngle = orbitAngle;
         }
+    } 
+    if (digitalRead(COMM) == HIGH) {
+        motors.move(moveSpeed, moveAngle, compassRot, heading); // attackRot            
+    } else {
+        // if (ROBOT_1) {
+        //     motors.move(moveSpeed, moveAngle, compassRot, heading); // attackRot
+        //     // motors.move(moveSpeed, moveAngle, compassRot, heading); // attackRot 
+        // } else { // check this is the robot that connects to comm module
+        //     motors.move(0.0f, 0.0f, 0.0f, heading); // attackRot
+        //     // motors.move(moveSpeed, moveAngle, compassRot, heading); // attackRot 
+        // }
+        motors.move(0.0f, 0.0f, 0.0f, heading);
     }
+    // else{ //Defender
+    //     defend(fieldLineSize);
+    //     if(camera.cameraData.ballAngle != -1.0f){
+    //         if (absoluteLineAngle == -1.0f && !surge){ //coming back from surge
+    //             Serial.print("bitch");
+    //             moveSpeed = orbitSpeed;
+    //             if(camera.cameraData.ballAngle > 90.0f && camera.cameraData.ballAngle < 270.0f){
+    //                 moveAngle = orbitAngle;
+    //             } else{
+    //                 moveAngle = 180.0f;
+    //             }
+    //         } else if (absoluteLineAngle > 180.0f && absoluteLineAngle < 270.0f){ //right hand side of goal box
+    //             if (camera.cameraData.ballAngle < 180.0f && camera.cameraData.ballAngle > 20.0f){
+    //                 moveSpeed = 0.0f;
+    //                 moveAngle = -1.0f;
+    //             } else{
+    //                 moveSpeed = defendSpeed;
+    //                 moveAngle = defendAngle;
+    //             }
+    //         } else if (absoluteLineAngle > 90.0f && absoluteLineAngle < 180.0f){ //left hand side of goalbox
+    //             if (camera.cameraData.ballAngle > 180.0f && camera.cameraData.ballAngle < 340.0f){
+    //                 moveSpeed = 0.0f;
+    //                 moveAngle = -1.0f;
+    //             } else{
+    //                 moveSpeed = defendSpeed;
+    //                 moveAngle = defendAngle;
+    //             }
+    //         } 
+    //         // else if (camera.cameraData.defendGoalDist > 165.0f && surge) { //finished surging?
+    //         //     surge = false;
+    //         // } 
+    //         // else if (camera.cameraData.ballDist < 15.0f && camera.cameraData.defendGoalDist < 165.0f){ // can surge (can use defending goal distance rather lineagle)
+    //         //     // Serial.print("SURGE");
+    //         //     moveAngle = floatMod(camera.cameraData.ballAngle + heading, 360.0f);
+    //         //     moveSpeed = 20.0f;
+    //         //     surge = true;
+    //         // } 
+    //         else{ //defend
+    //             // Serial.print("DEFEND");
+    //             moveAngle = defendAngle;
+    //             moveSpeed = defendSpeed;
+    //         }
+    //     } else{
+    //         // Serial.print("not");
+    //         moveAngle = -1.0f;
+    //         moveSpeed = 0.0f;
+    //     }     
+        
+    //     /////ADDD COMMM MODULE
+    //     // Serial.print(surge);                        Serial.print("\t");
+    //     // Serial.print(camera.cameraData.ballAngle);  Serial.print("\t");
+    //     // Serial.print(camera.cameraData.ballDist);   Serial.print("\t");
+    //     // Serial.println(absoluteLineAngle);
+
+    //     if (digitalRead(COMM) == HIGH) {
+    //         motors.move(moveSpeed, moveAngle, compassRot, heading); // attackRot            
+    //     } else {
+    //         motors.move(0.0f, 0.0f, compassRot, heading); // attackRot
+    //         // motors.move(moveSpeed, moveAngle, attackRot, heading); // attackRot 
+    //     }
+
+    // }
 
 
 

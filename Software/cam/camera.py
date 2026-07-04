@@ -7,9 +7,9 @@ CALIBRATION = False # Gets gain and exposure and draws masking circle
 
 FRAME_HEIGHT = 400
 FRAME_WIDTH = 400
-FRAME_CX = 235 # 210 235
-FRAME_CY = 195 # 201 195
-FRAME_R = 193 # 200 193
+FRAME_CX = 210 # 210, 235
+FRAME_CY = 201 # 201, 195
+FRAME_R = 200 # 200, 193
 
 GOAL_MIN_AREA = 200
 GOAL_MIN_PIXELS = 100
@@ -22,8 +22,7 @@ BLUE = 4
 
 
 # Ball, Yellow, Blue
-THRESHOLDS = [(27, 44, 30, 52, 4, 34), (36, 48, 3, 35, 19, 37), (25, 36, -7, 10, -27, -8)]
-
+THRESHOLDS = [(62, 80, 11, 62, 26, 56), (41, 61, 6, 36, 21, 41), (25, 38, -8, 12, -23, 1)]
 
 led = LED("LED_GREEN")
 led.on()
@@ -40,7 +39,7 @@ if CALIBRATION:
     print("Calibration Mode")
 
 else:
-    cam.auto_gain(False, gain_db=24.0824)
+    cam.auto_gain(False, gain_db=23.26472)
     cam.auto_exposure(False, exposure_us=16648) # 120fps: 8248;   60fps: 16648
     cam.auto_whitebal(False)
 
@@ -68,7 +67,7 @@ else:
         blobs = img.find_blobs(THRESHOLDS, x_stride=5, y_stride=5, area_threshold=BALL_MIN_AREA, pixels_threshold=BALL_MIN_PIXELS, merge=False, margin=5)
 
         # Start bytes, ball, yellow, blue
-        data = [255, 255, FRAME_CX, FRAME_CY, FRAME_CX, FRAME_CY, FRAME_CX, FRAME_CY]
+        data = [255, 255, 500, 500, 500, 500, 500, 500]
 
         rawBlobs = [None, None, None]
 
@@ -117,8 +116,8 @@ else:
             data[6] = (rawBlobs[2]).cx()
             data[7] = (rawBlobs[2]).cy()
 
-        img.draw_line(FRAME_CX - 5, FRAME_CY, FRAME_CX + 5, FRAME_CY) # horizontal
-        img.draw_line(FRAME_CX, FRAME_CY - 5, FRAME_CX, FRAME_CY + 5) # vertical
+        # img.draw_line(FRAME_CX - 5, FRAME_CY, FRAME_CX + 5, FRAME_CY) # horizontal
+        # img.draw_line(FRAME_CX, FRAME_CY - 5, FRAME_CX, FRAME_CY + 5) # vertical
 
         # img.draw_line(FRAME_CX, FRAME_CY, data[2], data[3]); # draws line from center to ball
         # img.draw_line(FRAME_CX, FRAME_CY, data[4], data[5]); # draws line from center to ygoal
