@@ -34,7 +34,7 @@ static float attackRot = 0.0f;
 static float defendRot = 0.0f;
 
 #if ATTACK
-static float searchTarget = 135.0f;
+static float searchTarget = 0.0f;
 #else
 static float searchTarget = 90.0f;
 #endif
@@ -151,6 +151,7 @@ bool batteryLow() {
 }
 
 void defend() {
+    Serial.println(camera.cameraData.defendGoalAngle);
     float absoluteBallAngle = floatMod(camera.cameraData.ballAngle + heading, 360.0f);
     float absDefGoalAngle = floatMod(camera.cameraData.defendGoalAngle + heading, 360.0f);
     float in;
@@ -176,7 +177,7 @@ void defend() {
         in -= 360.0f;
     }
 
-    if (camera.cameraData.ballDist != 0.0f && (fabs(in) > 90.0f &&  fieldLineSize == -1.0f || ((camera.cameraData.ballAngle > 340.0f || camera.cameraData.ballAngle < 20.0f) && camera.cameraData.ballDist < 40.0f))) {
+    if (camera.cameraData.ballDist != 0.0f && (fabs(in) > 105.0f &&  fieldLineSize == -1.0f || ((camera.cameraData.ballAngle > 340.0f || camera.cameraData.ballAngle < 20.0f) && camera.cameraData.ballDist < 40.0f))) {
         getOrbitMovement();
     } else {
         if (camera.cameraData.ballDist != 0.0f) {
@@ -254,14 +255,14 @@ void loop() {
             if (diff > 180.0f) {
                 diff -= 360.0f;
             }
-            if (fabs(diff) < 90.0f) {
+            if (fabsf(diff) < 90.0f) {
                 if (diff > 0.0f) {
                     moveAngle = floatMod(fieldLineAngle + 90.0f, 360.0f);
                 } else {
                     moveAngle = floatMod(fieldLineAngle - 90.0f, 360.0f);
                 }
 
-                moveSpeed = fabs(sinf(diff)) * 40.0f;
+                moveSpeed = fabsf(sinf(diff)) * 40.0f;
             }
             rotation = imuPID.update(heading, 0.0f);
         } else {
@@ -274,7 +275,7 @@ void loop() {
                 rotation =  defendGoalTrackPID.update(in, 0.0f);    
                 side = defendHorizontalPID.update(absDefGoalAngle, 180.0);     
             } else {
-                side = 0;
+                side = 0.0f;
                 rotation = imuPID.update(heading, 0.0f);
             }
             fwd = -defendVerticalPID.update(fieldLineSize, 0.25f);
@@ -297,7 +298,7 @@ void loop() {
     #if ATTACK
     if (fieldLineSize > 0.75f) {
     #else
-    if (fieldLineSize > 1.0f) {
+    if (fieldLineSize > 0.25f) {
     #endif
 
         moveAngle = floatMod(fieldLineAngle + 180.0f, 360.0f);
@@ -327,11 +328,11 @@ void loop() {
     #endif
 
 
-    // if (digitalRead(COMM)) {
+    if (digitalRead(COMM)) {
         motors.move(moveSpeed, moveAngle, rotation, heading);
-    // } else {
-    //     motors.move(0.0f, 0.0f, 0.0f, 0.0f);
-    // }
+    } else {
+        motors.move(0.0f, 0.0f, 0.0f, 0.0f);
+    }
 
 
 

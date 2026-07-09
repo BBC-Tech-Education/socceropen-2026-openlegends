@@ -7,9 +7,9 @@ CALIBRATION = False # Gets gain and exposure and draws masking circle
 
 FRAME_HEIGHT = 400
 FRAME_WIDTH = 400
-FRAME_CX = 220 # Robot 2 210, Robot 1 220
-FRAME_CY = 210 # Robot 2 201, Robot 1 210
-FRAME_R = 193 # Robot 2 200, Robot 1 193
+FRAME_CX = 210 # Robot 2 210, Robot 1 220
+FRAME_CY = 201 # Robot 2 201, Robot 1 210
+FRAME_R = 200 # Robot 2 200, Robot 1 193
 
 GOAL_MIN_AREA = 200
 GOAL_MIN_PIXELS = 100
@@ -21,7 +21,7 @@ YELLOW = 2
 BLUE = 4
 
 # Ball, Yellow, Blue
-THRESHOLDS = [(42, 67, 40, 70, 36, 57), (30, 41, -6, 10, 13, 30), (12, 21, -6, 6, -23, -10)]
+THRESHOLDS = [(22, 43, 18, 53, 19, 43), (4, 13, -4, 9, 4, 13), (4, 9, -6, 2, -10, -2)]
 # THRESHOLDS = [(100, 100, 0, 0, 0, 0), (100, 100, 0, 0, 0, 0), (100, 100, 0, 0, 0, 0)]
 
 led = LED("LED_GREEN")
@@ -36,11 +36,12 @@ cam.window((FRAME_WIDTH, FRAME_HEIGHT))
 cam.snapshot(time=2000) # let auto‑exposure settle
 
 if CALIBRATION:
-    cam.auto_exposure(False, exposure_us=16648)
+    cam.auto_gain(True)
+    cam.auto_exposure(True)
     print("Calibration Mode")
 
 else:
-    cam.auto_gain(False, gain_db=24.0824)
+    cam.auto_gain(False, gain_db=12.0412)
     cam.auto_exposure(False, exposure_us=16648) # 120fps: 8248;   60fps: 16648
     cam.auto_whitebal(False)
 

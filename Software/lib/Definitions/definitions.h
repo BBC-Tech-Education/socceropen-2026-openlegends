@@ -58,23 +58,23 @@
 #define ATTACK_GOAL_TRACK_MAX (ROBOT_1 ? 25.0f : 0.0f)
 
 // Defender Goal Tracking PID
-#define DEFEND_GOAL_TRACK_KP (ROBOT_1 ? 0.2f : 0.0f) // High P halve?
+#define DEFEND_GOAL_TRACK_KP (ROBOT_1 ? 0.2f : 0.2f) // High P halve?
 #define DEFEND_GOAL_TRACK_KI (ROBOT_1 ? 0.0f : 0.0f)
-#define DEFEND_GOAL_TRACK_KD (ROBOT_1 ? 0.02f : 0.0f) // High D
+#define DEFEND_GOAL_TRACK_KD (ROBOT_1 ? 0.02f : 0.02f) // High D
 #define DEFEND_GOAL_TRACK_MAX (ROBOT_1 ? 0.0f : 0.0f)
 
 // Horizontal PID
-#define HORIZONTAL_KP (ROBOT_1 ? 0.75f : 0.0f) // 2.0f
+#define HORIZONTAL_KP (ROBOT_1 ? 0.75f : 1.0f) // 0.75f
 #define HORIZONTAL_KI (ROBOT_1 ? 0.0f : 0.0f)
 #define HORIZONTAL_KD (ROBOT_1 ? 0.0f : 0.0f) // No D
-#define HORIZONTAL_MAX (ROBOT_1 ? 50.0f : 0.0f) // Lower absoluteMax if overshooting big differences
+#define HORIZONTAL_MAX (ROBOT_1 ? 30.0f : 30.0f) // Lower absoluteMax if overshooting big differences
 // Horizontal P low Max high
 
 // Vertical PID
-#define VERTICAL_KP (ROBOT_1 ? 20.0f : 0.0f) // 7.5f
+#define VERTICAL_KP (ROBOT_1 ? 20.0f : 20.0f) // 7.5f
 #define VERTICAL_KI (ROBOT_1 ? 0.0f : 0.0f)
 #define VERTICAL_KD (ROBOT_1 ? 0.0f : 0.0f) // No D
-#define VERTICAL_MAX (ROBOT_1 ? 25.0f : 0.0f) // Lower absoluteMax if overshooting big differences
+#define VERTICAL_MAX (ROBOT_1 ? 25.0f : 25.0f) // Lower absoluteMax if overshooting big differences
 // Vertical max low P high
 
 /* Pins */
@@ -106,7 +106,7 @@
 // Light Sensors
 #define LS_NUM 48
 #define LS_NUM_INNER 32
-#define LS_THRESH_BUFF (ROBOT_1 ? 250 : 250) // 250
+#define LS_THRESH_BUFF (ROBOT_1 ? 225 : 200) // 250
 #define DIMMING (ROBOT_1 ? 125 : 125)
 #define LS_0 37
 #define LS_1 36
